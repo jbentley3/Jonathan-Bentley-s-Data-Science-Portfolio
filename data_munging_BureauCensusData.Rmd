@@ -1,0 +1,73 @@
+---
+title: "Data Munging With U.S. Census Bureau Data"
+output: html_document
+---
+
+
+  Population data was gathered from the U.S Census Data Burea in order to be cleaned and to examine which state had the highest population in July of 2011. First the data was read in from the website, and then it was turned into a data frame.
+
+```{r}
+urlToRead <- "https://www2.census.gov/programs-surveys/popest/tables/2010-2011/state/totals/nst-est2011-02.csv"
+testFrame <- read.csv(url(urlToRead))
+data.frame(testFrame)
+```
+  After examining the data frame, the decision was made to delete the first four rows of the data frame because these rows were not useable data. Furthermore, one may notice that after deleting these rows the numbers on the left side of each row (the assignec row numbers) have not accomodated to this change. Therefore, the second line was typed so as to correct the numbers assigned to each row so that the assigned row numbers start at one rather than four. Lastly, the third line was typed to examine the first and last ten rows of the data in order to confirm that the changes had been made.
+
+```{r}
+testFrame <- testFrame[-1:-4,]
+rownames(testFrame) <- NULL
+head(testFrame,10); tail(testFrame,10)
+```
+
+  After examining the first and last ten rows of the dataframe, it was clear that there were still many columns and rows that needed to be deleted in order to further clean this data. One row that stood out was row 57. This was an empty row that lied between two rows that were complete with data. Because it lied between two complete rows it was decided to delete this row by itself. The remaining syntax was used to fix the assigned row numbers and to check the last ten rows (as was done before).
+```{r}
+testFrame <- testFrame[-57,]
+rownames(testFrame) <- NULL
+tail(testFrame,10)
+```
+ While examining the data frame further it was apparent that all of the rows, from 58 through 64 and columns 10 through 12, were either empty or not really data. These rows were removed and the first and last six lines of the data frame was checked, using the tail and head functions, in order to see if the functions worked properly.
+```{r}
+testFrame <- testFrame[-58:-64,]
+tail(testFrame)
+testFrame <- testFrame[,-10:-12]
+head(testFrame)
+```
+  New names were used to replace the existing names of "X, X1..". The current names were replaced with the colnames function listed below. The data frame was checked further with the head and tail functions. After this check of the data frame it was apparent that two cases did not consistently have numerical data in columns where other cases did have numerical data. Therefore, these two rows were removed from the data frame.
+```{r}
+colnames(testFrame) <- c("Location", "Aprilpop2010", "Julypop2011", "PopulationChange", "Percent", "April2010Rank", "July2010Rank", "RankChange", "Percent.1")
+head(testFrame); tail(testFrame)
+testFrame <- testFrame[-1,]; testFrame <- testFrame[-56,]
+```
+  The assigned row numbers were than updated using the rownames function as was done before. The data frame was checked using the head function and the properties were checked using the str function. From examining the results it was clear that all of the variables were considered to be factors.
+```{r}
+rownames(testFrame) <- NULL
+head(testFrame)
+str(testFrame)
+```
+
+  To convert the variables from factors to numerical variables the syntax below was typed. This syntax removed any spaces and commas, and it converted the data to numerical variables. The only variable that was not converted to a numerical variable was Location because it truly is a factor.
+```{r}
+testFrame$Aprilpop2010 <-gsub(",", "", testFrame$Aprilpop2010)
+testFrame$Julypop2011 <-gsub(",", "", testFrame$Julypop2011) 
+testFrame$PopulationChange <-gsub(",", "", testFrame$PopulationChange)
+
+testFrame$Aprilpop2010 <- as.numeric(gsub(" ", "", testFrame$Aprilpop2010))
+testFrame$Julypop2011 <- as.numeric(gsub(" ", "", testFrame$Julypop2011))
+testFrame$PopulationChange <- as.numeric(gsub(" ", "", testFrame$PopulationChange))
+testFrame$Percent <- as.numeric(gsub(" ", "", testFrame$Percent))
+testFrame$April2010Rank <- as.numeric(gsub(" ", "", testFrame$April2010Rank))
+testFrame$July2010Rank <- as.numeric(gsub(" ", "", testFrame$July2010Rank))
+testFrame$RankChange <- as.numeric(gsub(" ", "", testFrame$RankChange))
+testFrame$Percent.1 <- as.numeric(gsub(" ", "", testFrame$Percent.1))
+```
+  The data frame was checked for completeness using the head and str function. The results showed a clean data set in which all of the variables were correctly classified as either a numerical variable or a factor.
+```{r}
+head(testFrame)
+str(testFrame)
+```
+  After the data had been cleaned it was time to manipulate the data to ensure its functionality. The data was sorted from the state biggest populations in the month of July 2011 to the smallest populations in the month of July 2011.
+```{r}
+testFrame <- testFrame[order(-testFrame$Julypop2011), ]
+head(testFrame)
+```
+  Overall, the data munging project, on this messy data, proved to be successful.
