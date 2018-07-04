@@ -1,0 +1,260 @@
+---
+title: "Temperature Change Research Study"
+output:
+  html_document: default
+  word_document: default
+---
+  A researcher wanted to see if there was a significant and meaningful difference between the temperature in June 2017 and the temperature in February 2017. 
+                      Methods
+  Data was gathered through a google chrome internet search tool and through a website called www.accuweather.com. The Fahrenheit temperature was manually copied into an excel spreadsheet and the Fahrenheit temperature was then converted into Celsius using this formula: (F-32) x .5556 (in which F stands for Fahrenheit) for each case. The factor or categorical variable was named June_Vs_ February and the levels are June and February. Below shows the created data set used in this study.
+
+June_Vs_February	Temperature_Fahrenheit	Temperature_Celsius
+June	73	22.7796
+June	77	25.002
+June	80	26.6688
+June	75	23.8908
+June	76	24.4464
+June	73	22.7796
+June	72	22.224
+June	70	21.1128
+June	77	25.002
+June	75	23.8908
+June	72	22.224
+June	74	23.3352
+June	81	27.2244
+June	85	29.4468
+June	86	30.0024
+June	88	31.1136
+June	86	30.0024
+June	86	30.0024
+June	84	28.8912
+June	84	28.8912
+June	82	27.78
+June	81	27.2244
+June	81	27.2244
+June	79	26.1132
+June	77	25.002
+June	88	31.1136
+June	94	34.4472
+June	89	31.6692
+June	80	26.6688
+June	78	25.5576
+June	77	25.002
+February	72	22.224
+February	68	20.0016
+February	61	16.1124
+February	66	18.8904
+February	61	16.1124
+February	61	16.1124
+February	66	18.8904
+February	73	22.7796
+February	75	23.8908
+February	65	18.3348
+February	65	18.3348
+February	75	23.8908
+February	77	25.002
+February	73	22.7796
+February	80	26.6688
+February	68	20.0016
+February	61	16.1124
+February	63	17.2236
+February	63	17.2236
+February	64	17.7792
+February	68	20.0016
+February	66	18.8904
+February	62	16.668
+February	64	17.7792
+February	66	18.8904
+February	58	14.4456
+February	61	16.1124
+February	66	18.8904
+
+                 
+  Data was imported and packages were installed using this syntax.
+
+```{r}
+library(car); library(ggplot2); library(pastecs); library(psych); library(Rcmdr); library(WRS2)
+library(readxl)
+Temperature_Fahrenheit <- c(73,
+                    77,
+                    80,
+                    75,
+                    76,
+                    73,
+                    72,
+                    70,
+                    77,
+                    75,
+                    72,
+                    74,
+                    81,
+                    85,
+                    86,
+                    88,
+                    86,
+                    86,
+                    84,
+                    84,
+                    82,
+                    81,
+                    81,
+                    79,
+                    77,
+                    88,
+                    94,
+                    89,
+                    80,
+                    78,
+                    77,
+                    72,
+                    68,
+                    61,
+                    66,
+                    61,
+                    61,
+                    66,
+                    73,
+                    75,
+                    65,
+                    65,
+                    75,
+                    77,
+                    73,
+                    80,
+                    68,
+                    61,
+                    63,
+                    63,
+                    64,
+                    68,
+                    66,
+                    62,
+                    64,
+                    66,
+                    58,                    
+                    61,
+                    66)
+Temperature_Celsius <- c(22.7796,
+             25.0020,
+             26.6688,
+             23.8908,
+             24.4464,
+             22.7796,
+             22.2240,
+             21.1128,
+             25.0020,
+             23.8908,
+             22.2240,
+             23.3352,
+             27.2244,
+             29.4468,
+             30.0024,
+             31.1136,
+             30.0024,
+             30.0024,
+             28.8912,
+             28.8912,
+             27.7800,
+             27.2244,
+             27.2244,
+             26.1132,
+             25.0020,
+             31.1136,
+             34.4472,
+             31.6692,
+             26.6688,
+             25.5576,
+             25.0020,
+             22.2240,
+             20.0016,
+             16.1124,
+             18.8904,
+             16.1124,
+             16.1124,
+             18.8904,
+             22.7796,
+             23.8908,
+             18.3348,
+             18.3348,
+             23.8908,
+             25.0020,
+             22.7796,
+             26.6688,
+             20.0016,
+             16.1124,
+             17.2236,
+             17.2236,
+             17.7792,
+             20.0016,
+             18.8904,
+             16.6680,
+             17.7792,
+             18.8904,
+             14.4456,
+             16.1124, 
+             18.8904)
+June_Vs_February<-c(rep(1,31),rep(2,28))
+June_Vs_February<-factor(June_Vs_February, levels = c(1:2), labels = c("June", "February"))
+Temperature_debate <- data.frame(June_Vs_February,Temperature_Fahrenheit, Temperature_Celsius)
+TD <- data.frame(Temperature_debate)
+```
+                  Assumptions
+  Although the central limit theorem states that as a sample approaches 30 it will naturally resemble a normal distribution, assumptions were checked just to be sure (For on average a month contains approximately 30 days so it should naturally approach a normal distribution). Assumptions were checked both visually and quantitatively using skew and kurtosis statistics. Neither the skew or kurtosis was significant in the Fahrenheit and Celsius samples which indicates that there were no outliers. The histogram and the qqplots shown below indicate a slightly positive skewness in both samples, and a fairly high kurtosis in both samples. Neither qqplot deviated substantially from a diagonal line, and the qqplots are exactly the same for Celsius as for Fahrenheit seeing as the Celsius data is the same as the Fahrenheit data except for the change in units. Furthermore, although neither the kurtosis nor skewness were significant the kurtosis came very close to being significant. Therefore, a Shapiro-Wilk test was conducted on both samples to assure that the samples were normal.  The temperature in Fahrenheit, W = .97, p  > .05 , and the temperature in Celsius W = .96, p > .05 were both not significant( meaning that the samples were not significantly different from a normal sample.
+  Assumptions for Celsius and Fahrenheit were checked using this syntax.
+```{r}
+histTempFarenheit <- ggplot(TD, aes(Temperature_Fahrenheit)) + theme(legend.position = "none") + geom_histogram(aes(y = ..density..), colour = "black", fill = "white", binwidth = 5) + labs(x = "Temperature in Fahrenheit", y = "Density")
+qqplotFarenheit <- qplot(sample =TD$Temperature_Fahrenheit) + stat_qq()
+histTempCelsius <- ggplot(TD, aes(Temperature_Celsius)) + theme(legend.position = "none") + geom_histogram(aes(y = ..density..), colour = "black", fill = "white", binwidth = 2.5) + labs(x = "Temperature in Celsius", y = "Density")
+qqplotCelsius <- qplot(sample =TD$Temperature_Celsius) + stat_qq()
+histTempFarenheit; qqplotFarenheit; histTempCelsius; qqplotCelsius
+round(stat.desc(cbind(TD$Temperature_Fahrenheit, TD$Temperature_Celsius), basic = FALSE, norm = TRUE), digits = 2)
+shapiro.test(TD$Temperature_Fahrenheit)
+shapiro.test(TD$Temperature_Celsius)
+```
+  The researcher than obtained normality statistics and graphs on the samples for each month. Below is a list of the same information but with the samples split into a group called June and another group called February. No qqplots were displayed for this information. Similar results were produced for these four groups as there were for just the Fahrenheit and Celsius samples. None of the results in these four groups produced a skewness or kurtosis that was significant. However, the skewness was fairly close to a value of one on both the February Fahrenheit and the February Celsius samples. This indicates that the skewness for these two groups approaches significance. Therefore, a Shapiro Wilk test was performed on these two groups.  The results were the same for both groups: The temperature in February, W = .92, p < .05, were both significantly different from a normal distribution. 
+```{r}
+JuneOnly <- TD[`June_Vs_February`=="June",]
+FebruaryOnly <- TD[`June_Vs_February`=="February",]
+histJuneFahrenheit <- ggplot(JuneOnly, aes(Temperature_Fahrenheit)) + theme(legend.position = "none") + geom_histogram(aes(y = ..density..), colour = "black", fill = "white", binwidth = 5) + labs(x = "Temperature in Fahrenheit For June", y = "Density")
+histJuneCelsius <- ggplot(JuneOnly, aes(Temperature_Celsius)) + theme(legend.position = "none") + geom_histogram(aes(y = ..density..), colour = "black", fill = "white", binwidth = 2.5) + labs(x = "Temperature in Celsius For June", y = "Density")
+histFebFahrenheit <- ggplot(FebruaryOnly, aes(Temperature_Fahrenheit)) + theme(legend.position = "none") + geom_histogram(aes(y = ..density..), colour = "black", fill = "white", binwidth = 5) + labs(x = "Temperature in Fahrenheit For February", y = "Density")
+histFebCelsius <- ggplot(FebruaryOnly, aes(Temperature_Celsius)) + theme(legend.position = "none") + geom_histogram(aes(y = ..density..), colour = "black", fill = "white", binwidth = 2.5) + labs(x = "Temperature in Celsius For February", y = "Density")
+histJuneFahrenheit; histJuneCelsius; histFebFahrenheit; histFebCelsius
+round(stat.desc(cbind(JuneOnly$Temperature_Fahrenheit, JuneOnly$Temperature_Celsius, FebruaryOnly$Temperature_Fahrenheit, FebruaryOnly$Temperature_Celsius), basic = FALSE, norm = TRUE), digits = 2)
+shapiro.test(FebruaryOnly$Temperature_Fahrenheit)
+shapiro.test(FebruaryOnly$Temperature_Celsius)
+```
+
+  As a result of having skewed distributions, an assessment of outliers was done using boxplots. By observing the boxplots, one can see that for February in both the Celsius and Fahrenheit samples there are outliers. For the Fahrenheit sample the outlier has a value of 80 degrees and for the Celsius sample the outlier has a value of 26.66.  To solve this problem a new data frame was created with the elimination of the stated outliers.
+```{r}
+Febbox <- ggplot(TD, aes(`June_Vs_February`, Temperature_Fahrenheit))
+Febbox + geom_boxplot() + labs(x = "Month either February or June", y = "Temperature in Fahrenheit")
+Febbox2 <- ggplot(TD, aes(`June_Vs_February`, Temperature_Celsius))
+Febbox2 + geom_boxplot() + labs(x = "Month either February or June", y = "Temperature in Celsius")
+F <- subset(FebruaryOnly, Temperature_Fahrenheit < 80, select = c("June_Vs_February", "Temperature_Fahrenheit", "Temperature_Celsius"))
+FebOnlyNo_Outliers <- subset(F, Temperature_Celsius < 26.6, select = c("June_Vs_February", "Temperature_Fahrenheit", "Temperature_Celsius"))
+
+```
+  Furthermore, the assumptions for the month of February were checked again using histograms and the Shapiro Wilk Test to see if the deletion of the outliers had any affects on how the normal the distribution of these samples are. From observing the histograms it is apparent that the skewness has been decreased. For the distributions look more like bell shaped curves than they did before. As for the Shapiro Wilk test, the results show that both the temperature in fahrenheit, W = .93, p > .05, and the temperature in celsius, W = .93, p > .05 were both not significantly non normal (indicating they are normal distributions).
+```{r}
+histFebFahrenheit2 <- ggplot(FebOnlyNo_Outliers, aes(Temperature_Fahrenheit)) + theme(legend.position = "none") + geom_histogram(aes(y = ..density..), colour = "black", fill = "white", binwidth = 2.5) + labs(x = "Temperature in Fahrenheit For February", y = "Density")
+histFebCelsius2 <- ggplot(FebOnlyNo_Outliers, aes(Temperature_Celsius)) + theme(legend.position = "none") + geom_histogram(aes(y = ..density..), colour = "black", fill = "white", binwidth = 1.25) + labs(x = "Temperature in Celsius For February", y = "Density")
+shapiro.test(FebOnlyNo_Outliers$Temperature_Fahrenheit)
+shapiro.test(FebOnlyNo_Outliers$Temperature_Celsius)
+
+```
+                                        Research Design
+  Seeing as all samples were cleaned to be normal it was time to conduct the experiment. An independent t-test was used to analyze the difference between temperature levels in June versus July. More specifically the means of the temperature highs in June and February for both degrees in Fahrenheit and Celsius. Effect sizes were gathered to measure how large the effects were in both samples. Cohen's d was used to calculate the effect size and it was calculated through a cohen's d calculator on this website: http://www.socscistatistics.com/effectsize/Default3.aspx
+                                              Results
+  Results for the difference between June and February average temperature highs in degrees Fahrenheit is stated below:
+  On Average, the average of temperatures highs in Fahrenheit was greater in the month of June 2017 (M = 80, SE = 1.06), than it was during the month of February 2017 (M = 66.22, SE = .883). This difference was significant at t(55.98) = 9.59, p < .001. Furthermore, a very large effect can be seen from this difference, Cohen's d = 2.53.
+  Results for the difference between June and February average temperature highs in degrees Celsius is stated below:
+  On Average, the average of temperature highs in Celsius was greater in the month of June 2017 (M = 26.66, SE = .59), than it was during the month of February 2017 (M = 19.05, SE = .49). this difference was significant at t(55.98) = 9.58, p < .001. Furthermore, a very large effect can be seen from this difference, Cohen's d = 2.52.
+
+```{r}
+TtestFahrenheit <- t.test(JuneOnly$Temperature_Fahrenheit, FebOnlyNo_Outliers$Temperature_Fahrenheit)
+TtestCelsius <- t.test(JuneOnly$Temperature_Celsius, FebOnlyNo_Outliers$Temperature_Celsius)
+TtestFahrenheit; TtestCelsius
+stat.desc(cbind(JuneOnly$Temperature_Celsius, FebOnlyNo_Outliers$Temperature_Celsius))
+```
+
