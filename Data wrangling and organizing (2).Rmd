@@ -1,0 +1,138 @@
+---
+title: "RAPP Exam Projects"
+author: "Jonathan Bentley"
+date: "August 1, 2018"
+output: html_document
+---
+                                                    Project 1
+For this project I was instructed to create a function in which the variables would b grouped by the type of calculation that needs to be done on them. The first thing I did was read in the data from the UCI website
+
+```{r}
+urlToRead <- "https://archive.ics.uci.edu/ml/machine-learning-databases/autos/imports-85.data"
+Autos_Data <- read.csv(url(urlToRead))
+Autos_Data <- data.frame(Autos_Data)
+```
+I then assigned names to the data since the data did not have any column names
+```{r}
+cnames <- colnames(Autos_Data)
+Autos_Data$symboling <- Autos_Data[,1]
+Autos_Data$normalized_losses <- Autos_Data[,2]
+Autos_Data$make <- Autos_Data[,3]
+Autos_Data$fuel_type <- Autos_Data[,4]
+Autos_Data$aspiration <- Autos_Data[,5]
+Autos_Data$num_of_doors <- Autos_Data[,6]
+Autos_Data$body_style <- Autos_Data[,7]
+Autos_Data$drive_wheels <- Autos_Data[,8]
+Autos_Data$engine_location <- Autos_Data[,9]
+Autos_Data$wheel_base <- Autos_Data[,10]
+Autos_Data$length <- Autos_Data[,11]
+Autos_Data$width <- Autos_Data[,12]
+Autos_Data$height <- Autos_Data[,13]
+Autos_Data$curb_weight <- Autos_Data[,14]
+Autos_Data$engine_type <- Autos_Data[,15]
+Autos_Data$num_of_cylinders <- Autos_Data[,16]
+Autos_Data$engine_size <- Autos_Data[,17]
+Autos_Data$fuel_system <- Autos_Data[,18]
+Autos_Data$bore <- Autos_Data[,19]
+Autos_Data$stroke <- Autos_Data[,20]
+Autos_Data$compression_ratio <- Autos_Data[,21]
+Autos_Data$horsepower <- Autos_Data[,22]
+Autos_Data$peak_rpm <- Autos_Data[,23]
+Autos_Data$city_mpg <-Autos_Data[,24]
+Autos_Data$highway_mpg <- Autos_Data[,25]
+Autos_Data$price <- Autos_Data[,26]
+
+Autos_Data <- Autos_Data[,-1:-26]
+```
+I then organized the variables by the type of math operation that I would like to have done on them. For the most part the variables were chosen at random for each group. The one criteria was that the variables had to be numeric.
+```{r}
+Sum <- c(price_sum <- Autos_Data$price, normalized_losses_sum <- Autos_Data$normalized_losses)
+
+Max <- c(normalized_losses_max <-Autos_Data$normalized_losses, wheel_base_max <-Autos_Data$wheel_base, length_max <- Autos_Data$length, 
+              width_max <- Autos_Data$width, height_max <-Autos_Data$height, curb_weight_max <-Autos_Data$curb_weight)
+
+Min <- c(normalized_losses_min <- Autos_Data$normalized_losses, wheel_base_min <-Autos_Data$wheel_base, 
+              length_min <-Autos_Data$length, width_min <-Autos_Data$width, height_min <-Autos_Data$height,
+              curb_weight_min <-Autos_Data$curb_weight)
+
+Avg <- c( wheel_base_avg <-Autos_Data$wheel_base, length_avg <-Autos_Data$length, width_avg <-Autos_Data$width, 
+          city_mpg_avg <-Autos_Data$city_mpg, highway_mpg_avg <-Autos_Data$highway_mpg)
+```
+I then created dataframes for each of the groups so that it would be easier to combine the variables to create a larger dataframe.
+```{r}
+Sum_list <- data.frame(price_sum, normalized_losses_sum)
+Max_list <- data.frame(normalized_losses_max, wheel_base_max, length_max, width_max, curb_weight_max)
+Min_list <- data.frame(normalized_losses_min, wheel_base_min, length_min, width_min, height_min, curb_weight_min)
+Avg_list <- data.frame(wheel_base_avg, length_avg, width_avg, city_mpg_avg, highway_mpg_avg)
+```
+Now I can create a dataframe with all of the variables with their changed names. I also added the body_style variable so that it can be used for grouping the data.
+```{r}
+Autos_DAta2 <- data.frame(Autos_Data$body_style, Sum_list, Max_list, Min_list, Avg_list)
+```
+I utilize the group_by function in dplyr to group the data by the Autos_Data$body_style variable.
+```{r}
+library(dplyr)
+body_styleGroup <- group_by(Autos_DAta2, Autos_Data$body_style) 
+```
+Now I have all the code that I need to create my function. The title I want to give to my function is Autos_Data3.
+```{r}
+  urlToRead <- "https://archive.ics.uci.edu/ml/machine-learning-databases/autos/imports-85.data"
+  Autos_Data <- read.csv(url(urlToRead))
+  Autos_Data <- data.frame(Autos_Data)
+  
+  Autos_Data$symboling <- Autos_Data[,1]
+  Autos_Data$normalized_losses <- Autos_Data[,2]
+  Autos_Data$make <- Autos_Data[,3]
+  Autos_Data$fuel_type <- Autos_Data[,4]
+  Autos_Data$aspiration <- Autos_Data[,5]
+  Autos_Data$num_of_doors <- Autos_Data[,6]
+  Autos_Data$body_style <- Autos_Data[,7]
+  Autos_Data$drive_wheels <- Autos_Data[,8]
+  Autos_Data$engine_location <- Autos_Data[,9]
+  Autos_Data$wheel_base <- Autos_Data[,10]
+  Autos_Data$length <- Autos_Data[,11]
+  Autos_Data$width <- Autos_Data[,12]
+  Autos_Data$height <- Autos_Data[,13]
+  Autos_Data$curb_weight <- Autos_Data[,14]
+  Autos_Data$engine_type <- Autos_Data[,15]
+  Autos_Data$num_of_cylinders <- Autos_Data[,16]
+  Autos_Data$engine_size <- Autos_Data[,17]
+  Autos_Data$fuel_system <- Autos_Data[,18]
+  Autos_Data$bore <- Autos_Data[,19]
+  Autos_Data$stroke <- Autos_Data[,20]
+  Autos_Data$compression_ratio <- Autos_Data[,21]
+  Autos_Data$horsepower <- Autos_Data[,22]
+  Autos_Data$peak_rpm <- Autos_Data[,23]
+  Autos_Data$city_mpg <-Autos_Data[,24]
+  Autos_Data$highway_mpg <- Autos_Data[,25]
+  Autos_Data$price <- Autos_Data[,26]
+  
+  Autos_Data <- Autos_Data[,-1:-26]
+  
+  Sum <- c(price_sum <- Autos_Data$price, normalized_losses_sum <- Autos_Data$normalized_losses)
+  
+  Max <- c(normalized_losses_max <-Autos_Data$normalized_losses, wheel_base_max <-Autos_Data$wheel_base, length_max <- Autos_Data$length, 
+           width_max <- Autos_Data$width, height_max <-Autos_Data$height, curb_weight_max <-Autos_Data$curb_weight)
+  
+  Min <- c(normalized_losses_min <- Autos_Data$normalized_losses, wheel_base_min <-Autos_Data$wheel_base, 
+           length_min <-Autos_Data$length, width_min <-Autos_Data$width, height_min <-Autos_Data$height,
+           curb_weight_min <-Autos_Data$curb_weight)
+  
+  Avg <- c( wheel_base_avg <-Autos_Data$wheel_base, length_avg <-Autos_Data$length, width_avg <-Autos_Data$width, 
+            city_mpg_avg <-Autos_Data$city_mpg, highway_mpg_avg <-Autos_Data$highway_mpg)
+  Sum_list <- data.frame(price_sum, normalized_losses_sum)
+  Max_list <- data.frame(normalized_losses_max, wheel_base_max, length_max, width_max, curb_weight_max)
+  Min_list <- data.frame(normalized_losses_min, wheel_base_min, length_min, width_min, height_min, curb_weight_min)
+  Avg_list <- data.frame(wheel_base_avg, length_avg, width_avg, city_mpg_avg, highway_mpg_avg)
+  
+  Autos_DAta2 <- data.frame(Autos_Data$body_style, Sum_list, Max_list, Min_list, Avg_list) 
+  library(dplyr)
+  body_styleGroup <- group_by(Autos_DAta2, Autos_Data.body_style) 
+```
+here I am going to examine my new function by examining its characteristics, the first two rows of the dataframe, and one of the variables
+```{r}
+str(body_styleGroup)
+head(body_styleGroup)
+body_styleGroup$price_sum
+```
+Looks like the function is ready for use.
