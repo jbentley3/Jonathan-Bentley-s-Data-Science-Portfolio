@@ -1,0 +1,61 @@
+---
+title: "RAPP Data Visualization"
+author: "Jonathan Bentley"
+date: "August 1, 2018"
+output: html_document
+---
+                                                        Project 3
+ This project instructed me to make data visualizations that best convey which forecasting data best predicts sales.
+ The first thing I did was manually create my dataset using the R because R markdown cannot process imported data. I had already sorted the data in alphabetical order using excel and then copy and pasted my data.
+```{r}
+channel <-channelCoded <- c(rep(1, 12), rep(2, 12), rep(3, 12))
+factor(channelCoded, levels = c(1:3), labels = c("Channel A", "Channel B", "Channel C"))
+sales <- c(3773,  3498,  3175,  3656,  2883,  2833,  3794,  3700,
+  3737,  3496,  3139,  2520,  1779,  2057,  1594,  1395,
+  1257,  1459,  2376,  1917,  2432,  2620,  2124,  1993,
+ 18454, 16081, 12737, 18127, 19349, 20379, 24612, 23247, 25708, 25983, 23965, 24566)
+challenger <- c(3226,  3233,  3340,  3478,  3479,  3146,  3319,  2421,  3700,  3475,  3475,  3150,  1787,  1991,  1428,  1621,  1556, 1521,
+                   2015,  1796,  2066,  2552,  2851,  1661, 20346, 21824, 11407, 14796, 20922, 20157, 19774, 18650, 21250, 22762, 22180, 24566)
+champion <- c(  3877,  4488,  3824,  3852,  3646,  3336,  3834,  3716,  3332,  2720,  3176,  3221,  1514,  1834,  1575,  1476,  1451,  1446,
+                2173,  2024,  2093,  2212,  2196,  1734, 21124, 21142, 19448, 14943, 18436, 19512, 22603, 22595, 22291, 22439, 24996, 22761)
+ChampChall <- data.frame(channel, sales, challenger, champion)
+
+```
+Here I split my data up into three dataframes. The dataframes were made for each Channel
+```{r}
+Channel_A <- data.frame(ChampChall[channel == 1,])
+Channel_B <- data.frame(ChampChall[channel == 2,])
+Channel_C <- data.frame(ChampChall[channel == 3,])
+head(Channel_A,2);head(Channel_B,2);head(Channel_C,2)
+```
+Now that all the dataframes have been created I can use the plot() function to explore my data. the results show that the plots are somewhat predictive of sales for both the challenger and channel forecasts.
+
+```{r}
+plot(Channel_A$challenger, Channel_A$sales)
+plot(Channel_A$champion, Channel_A$sales)
+plot(Channel_B$challenger, Channel_B$sales)
+plot(Channel_B$champion, Channel_B$sales)
+plot(Channel_C$challenger, Channel_C$sales)
+plot(Channel_C$champion, Channel_C$sales)
+```
+The next thing I wanted to do was to see if the the champion and challenger forecasts individually predicted sales
+```{r}
+plot(ChampChall$challenger, ChampChall$sales)
+plot(ChampChall$champion, ChampChall$sales)
+```
+Here is the code to make the more advanced graphs. Again 1 indicates that it is Channel A, 2 indicates that it is channel B, and 3 indicates that it is channel C.
+```{r}
+library(ggplot2);library(plotly)
+ChampChall_Scatter <- ggplot(ChampChall, aes(challenger, sales))
+ChampChall_Scatter <- ChampChall_Scatter + geom_smooth(se = F, color = "grey") + geom_point(aes(colour = factor(channel))) + ggtitle('Challenger Forecast Relationship With Sales')
+ggplotly(ChampChall_Scatter)
+
+ChampChall_Scatter <- ggplot(ChampChall, aes(champion, sales))
+ChampChall_Scatter <- ChampChall_Scatter + geom_smooth(se = F, color = "grey") + geom_point(aes(colour = factor(channel))) + ggtitle('Champion Forecast Relationship With Sales')
+ggplotly(ChampChall_Scatter)
+
+```
+
+In conclusion I would recommend the champion forecast because the relationship between the predicted values of sales and the actual values of sales was more linear than the relationship between challenger and sales. This is apparent when looking at the straight line for the relationship between champion and sales vs the somewhat curved one for challenger and sales.
+
+
