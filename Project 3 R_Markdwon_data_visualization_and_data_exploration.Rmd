@@ -1,0 +1,343 @@
+---
+title: "Data Visualization and Exploration"
+author: "Jonathan Bentley"
+date: "11/6/2018"
+output: html_document
+---
+
+This project is separated into four parts with the first part showing some coding used to create maps of the United States distinguished by zip code and chci. The second part shows the relationship between fertility rate and life expectancies of a country. The third part shows what variables have influenced the error between the zillow estimated house price estimates and the actual price estimates. Lastly the fourth part shows a interactive animated graph of the relationship between country fertility rate and a countries life expectancy. 
+
+I began the first part by adding all of the packages that I would need in order to create a geographic visualization. I then read in the data that is already within the R software.
+I did some more manipulation to the data set in order to have all the needed variables in one data frame. Lastly I imported the chci data and added it to the data frame.
+```{r}
+
+library(ggplot2)
+library(readxl) 
+library(dplyr)
+library(maps)
+
+cnty = map_data("county")
+gusa = map_data("state")
+head(cnty)
+head(county.fips)
+
+cnty2 = cnty %>% mutate(polyname=paste(region,subregion, sep=",")) %>%
+  left_join(county.fips, by="polyname")
+head(cnty2)
+getwd()
+chci <- read.csv("~/Desktop/ Data Science GitHub Directory/Jonathan-Bentley-s-Data-Science-Portfolio/chci.csv")
+colnames(chci)[2]="fips"   # change the column name of "id" to "fips"
+cnty3 = cnty2 %>% left_join(chci, by="fips")
+```
+Chci09 was chosen to investigate the chci percentage in each county in the year 2009. The chci probability was chosen to be divided by 10 for ease of interpretation.
+```{r}
+qt1=quantile(cnty3$chci09, probs=c(0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1), na.rm=T)
+chci09a =cut(cnty3$chci09, breaks=qt1, labels=paste(qt1[-1]))
+```
+Each County is separated by a white line and the more red the county is the lower the chci is. The more blue the county is the higher the cichi is.
+```{r}
+ggplot(cnty3, aes(long,lat,group=group)) + 
+  geom_polygon(aes(fill = chci09a), colour = rgb(1,1,1,0.2)) + coord_quickmap() +
+  scale_fill_brewer(palette = "RdBu")
+state_layer=geom_polygon(aes(long,lat,group=group), fill=NA, data=gusa,color = "darkgreen") 
+```
+Lastly a state layer was put on the map so as to better distinguish the states from each other.
+```{r}
+ggplot(cnty3, aes(long,lat,group=group)) + 
+  geom_polygon(aes(fill = chci09a), colour = rgb(1,1,1,0.2)) + coord_quickmap() +
+  scale_fill_brewer(palette = "RdBu") + state_layer
+```
+For the second part of this project I began by reading in certain packages that I needed. Then I imported in the data set called called world development indicators. Lastly I did a subset on the data to create three separate data sets separated by indicator codes that matched with the variables of interest. 
+```{r}
+library(ggplot2)
+library(readxl) 
+library(tidyverse)
+library(dplyr)
+
+wdi <- read.csv("~/Desktop/ Data Science GitHub Directory/Jonathan-Bentley-s-Data-Science-Portfolio/W03b_wdi.csv") 
+wdi.le = subset(wdi, Indicator.Code == "SP.DYN.LE00.IN")
+wdi.po = subset(wdi, Indicator.Code == "SP.POP.TOTL")
+wdi.fr = subset(wdi, Indicator.Code == "SP.DYN.TFRT.IN")
+```
+I then merged the three data sets together while only selecting the country name, country code and the variables of fertility, population, and life expectancy. 
+```{r}
+wdi3v.1960a=merge(wdi.le[,c("Country.Name","Country.Code","X1960")], wdi.po[,c("Country.Code","X1960")], by="Country.Code")
+wdi3v.1960b=merge(wdi3v.1960a, wdi.fr[,c("Country.Code","X1960")], by="Country.Code")
+
+wdi3v.1960=wdi3v.1960b[!wdi3v.1960b$Country.Code %in% c("ARB",	"CSS",	"CEB",	"EAR",	"EAS",	"EAP",	"TEA",	"EMU",	"ECS",
+                                                  "ECA",	"TEC",	"EUU",	"FCS",	"HPC",	"HIC",	"IBD",	"IBT",	"IDB",	
+                                                  "IDX",	"IDA",	"LTE",	"LCN",	"LAC",	"TLA",	"LDC",	"LMY",	"LIC",	
+                                                  "LMC",	"MEA",	"MNA",	"TMN",	"MIC",	"NAC",	"INX",	"OED",	"OSS",	
+                                                  "PSS",	"PST",	"PRE",	"SST",	"SAS",	"TSA",  "SSF",	"SSA",	"TSS",
+                                                  "UMC",	"WLD"),]
+```
+I changed the names of the columns within the data set and I created the visualization using ggplot.
+```{r}
+colnames(wdi3v.1960)=c("code", "country", "life","pop","fr")
+p6=ggplot(wdi3v.1960, aes(x=life, y=fr, size=pop)) + geom_point(alpha=0.4) + scale_size_continuous(range=c(0.5, 20)) + labs(x = "Life expectancy", y = "Fertility rate", colour = "country") 
+p6
+```
+For the third part of this project I began by importing all of the packages that I needed. Then I imported the data sets of interest. 
+```{r}
+library(data.table)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(DT)
+library(tidyr)
+library(corrplot)
+library(leaflet)
+library(lubridate)
+
+getwd()
+properties <- read.csv("~/Desktop/ Data Science GitHub Directory/Jonathan-Bentley-s-Data-Science-Portfolio/zillow prize project data/properties_2016.csv")
+transactions <- read.csv("~/Desktop/ Data Science GitHub Directory/Jonathan-Bentley-s-Data-Science-Portfolio/zillow prize project data/train_2016_v2.csv")
+```
+I then changed the name of every variable so as to make the data set more interpretable.
+```{r}
+properties <- properties %>% rename(
+  id_parcel = parcelid,
+  build_year = yearbuilt,
+  area_basement = basementsqft,
+  area_patio = yardbuildingsqft17,
+  area_shed = yardbuildingsqft26, 
+  area_pool = poolsizesum,  
+  area_lot = lotsizesquarefeet, 
+  area_garage = garagetotalsqft,
+  area_firstfloor_finished = finishedfloor1squarefeet,
+  area_total_calc = calculatedfinishedsquarefeet,
+  area_base = finishedsquarefeet6,
+  area_live_finished = finishedsquarefeet12,
+  area_liveperi_finished = finishedsquarefeet13,
+  area_total_finished = finishedsquarefeet15,  
+  area_unknown = finishedsquarefeet50,
+  num_unit = unitcnt, 
+  num_story = numberofstories,  
+  num_room = roomcnt,
+  num_bathroom = bathroomcnt,
+  num_bedroom = bedroomcnt,
+  num_bathroom_calc = calculatedbathnbr,
+  num_bath = fullbathcnt,  
+  num_75_bath = threequarterbathnbr, 
+  num_fireplace = fireplacecnt,
+  num_pool = poolcnt,  
+  num_garage = garagecarcnt,  
+  region_county = regionidcounty,
+  region_city = regionidcity,
+  region_zip = regionidzip,
+  region_neighbor = regionidneighborhood,  
+  tax_total = taxvaluedollarcnt,
+  tax_building = structuretaxvaluedollarcnt,
+  tax_land = landtaxvaluedollarcnt,
+  tax_property = taxamount,
+  tax_year = assessmentyear,
+  tax_delinquency = taxdelinquencyflag,
+  tax_delinquency_year = taxdelinquencyyear,
+  zoning_property = propertyzoningdesc,
+  zoning_landuse = propertylandusetypeid,
+  zoning_landuse_county = propertycountylandusecode,
+  flag_fireplace = fireplaceflag, 
+  flag_tub = hashottuborspa,
+  quality = buildingqualitytypeid,
+  framing = buildingclasstypeid,
+  material = typeconstructiontypeid,
+  deck = decktypeid,
+  story = storytypeid,
+  heating = heatingorsystemtypeid,
+  aircon = airconditioningtypeid,
+  architectural_style= architecturalstyletypeid
+)
+
+transactions <- transactions %>% rename(
+  id_parcel = parcelid,
+  date = transactiondate
+)
+```
+Furthermore, I used the mutation function to add a variable called absolute log error which is the same as the log error variable but it is the absolute value of it. I also changed the factor of tax delinquency to be coded instead of using the strings "Y" and "N" for yes and no.
+```{r}
+transactions <- transactions %>% mutate(abs_logerror = abs(logerror))
+properties <- properties %>% 
+  mutate(tax_delinquency = ifelse(tax_delinquency=="Y",1,0),
+         flag_fireplace = ifelse(flag_fireplace=="Y",1,0),
+         flag_tub = ifelse(flag_tub=="Y",1,0))
+```
+I then merged the transactions data set with the properties data set. I continued to select certain variables while also changing the census variable to a factor.
+```{r}
+cor_tmp <- transactions %>% left_join(properties, by="id_parcel") 
+cor_tmp$census <- as.factor(cor_tmp$census)
+
+cor_tmp <- cor_tmp %>% select(id_parcel, zoning_property, zoning_landuse_county, date, logerror, abs_logerror, everything())
+```
+The next thing I wanted to inspect was which variables had more than 75 percent missing values. I used some programming to find these values and than I created a variable that lists the names of all the variables that have less than 75 percent of the values missing. This variable was called good features.
+```{r}
+missing_values <- cor_tmp %>% summarize_all(funs(sum(is.na(.))/n()))
+
+missing_values <- gather(missing_values, key="feature", value="missing_pct")
+missing_values %>% 
+  ggplot(aes(x=reorder(feature,-missing_pct),y=missing_pct)) +
+  geom_bar(stat="identity",fill="red")+
+  coord_flip()+theme_bw()
+good_features <- filter(missing_values, missing_pct<0.75)
+```
+I then inspected the correlation plots of all of the variables that were good features. These plosts were separated by the syntax that each of the variables began with such as "num" in num_bathroom. So there were three plots in total.
+
+```{r}
+vars <- good_features$feature[str_detect(good_features$feature,'num_')]
+tmp.num <- cor_tmp %>% select(one_of(c(vars, "abs_logerror")))
+corrplot(cor(tmp.num, use="complete.obs"),type="lower")
+cor(tmp.num, use="complete.obs")
+
+vars <- good_features$feature[str_detect(good_features$feature,'area_')]
+tmp.area <- cor_tmp %>% select(one_of(c(vars,"abs_logerror")))
+corrplot(cor(tmp.area, use="complete.obs"), type="lower")
+
+vars <- setdiff(good_features$feature[str_detect(good_features$feature,'tax_')],c("tax_delinquency","tax_year"))
+tmp.tax <- cor_tmp %>% select(one_of(c(vars,"abs_logerror")))
+corrplot(cor(tmp.tax, use="complete.obs"), type="lower")
+```
+I then inspected all of the bad features(features with more than 75 percent missing) just to make sure there were not relationships among these variables. Only one relationship was found.
+```{r}
+bad_features <- filter(missing_values, missing_pct>0.75)
+vars <- bad_features$feature[str_detect(bad_features$feature,'num_')]
+tmp2 <- cor_tmp %>% select(one_of(c(vars, "abs_logerror")))
+corrplot(cor(tmp2, use="complete.obs"),type="lower")
+
+vars <- setdiff(bad_features$feature[str_detect(bad_features$feature,'tax_')],c("tax_delinquency","tax_year"))
+tmp3 <- cor_tmp %>% select(one_of(c(vars,"abs_logerror")))
+corrplot(cor(tmp3, use="pairwise.complete.obs"), type="lower")
+
+```
+I then decided to conduct an ANOVA analysis to see if any of the factors had a relationship with the absolute log error. Before I could even run the ANOVA I found out that each factor did not meet the criteria of having homegeneity of variance between factor levels. Therefore I did not conduct the ANOVA analysis.
+```{r}
+library(car); library(pastecs);
+leveneTest(cor_tmp$abs_logerror, cor_tmp$zoning_property ,center = mean)
+leveneTest(cor_tmp$abs_logerror, cor_tmp$zoning_landuse_county ,center = mean)
+leveneTest(cor_tmp$abs_logerror, cor_tmp$date ,center = mean)
+```
+I noticed earlier from observing the good features that the num_bathroom, num_bathroom_calc, and the num_garage had some type of correlation with the absolute log error. I then performed a calcualtion to see how meaningful these relationships were. They were indeed meaningful. There was also one more correlation within the bad featured variables that correlated with the absolute error. This included the num_75_bathrooms variable
+
+```{r}
+cor(tmp.num, use="complete.obs")^2
+cor(tmp.area, use="complete.obs")^2
+cor(tmp.tax, use="complete.obs")^2
+cor(tmp2, use="complete.obs")^2
+```
+For the last part I utilized the same data that I used for part two. I first started by importing the data and quering specific data that I needed. I also added a data set that had all of the region values within the data set. 
+```{r}
+wdi.le = subset(wdi, Indicator.Code == "SP.DYN.LE00.IN")
+wdi.po = subset(wdi, Indicator.Code == "SP.POP.TOTL")
+wdi.fr = subset(wdi, Indicator.Code == "SP.DYN.TFRT.IN")
+
+wdi3v.a1=merge(wdi.le, wdi.po, by="Country.Code")
+wdi3v.b1=merge(wdi3v.a1, wdi.fr, by="Country.Code")
+
+wdi3v.b=wdi3v.b1[!wdi3v.b1$Country.Code %in% c("ARB",	"CSS",	"CEB",	"EAR",	"EAS",	"EAP",	"TEA",	"EMU",	"ECS",
+                                               "ECA",	"TEC",	"EUU",	"FCS",	"HPC",	"HIC",	"IBD",	"IBT",	"IDB",	
+                                               "IDX",	"IDA",	"LTE",	"LCN",	"LAC",	"TLA",	"LDC",	"LMY",	"LIC",	
+                                               "LMC",	"MEA",	"MNA",	"TMN",	"MIC",	"NAC",	"INX",	"OED",	"OSS",	
+                                               "PSS",	"PST",	"PRE",	"SST",	"SAS",	"TSA",  "SSF",	"SSA",	"TSS",
+                                               "UMC",	"WLD"),]
+
+wdi2 <- data.frame(read.csv("~/Desktop/ Data Science GitHub Directory/Jonathan-Bentley-s-Data-Science-Portfolio/W03b2.csv"))
+
+wdi3 <- wdi3v.b %>% left_join(wdi2, by="Country.Code")
+head(wdi3,1)
+wdi3 <- wdi3 %>% select(Country.Code, Country.Name, Region, everything())
+```
+The next task I engaged in involved converting the region variable to a factor and then deleting columns that were not useful to the analysis. I then created a visualization to ensure my coding was sound.
+```{r}
+wdi3$Region <- as.factor(wdi3$Region)
+str(wdi3)
+wdi3 <- wdi3[,-4:-6]
+p6=ggplot(wdi3, aes(x=X1960.x, y=X1960, size=X1960.y, colour = Region)) + geom_point(alpha=0.4) + scale_size_continuous(range=c(0.5, 20)) + labs(x = "Life expectancy", y = "Fertility rate", colour = "Region") 
+p6
+```
+I then scripted a lot of programming in order to select the needed variables for each year from the data set. I then binded all of the rows so as to create a data frame. I then transformed the variable year into a coded variable and then into a factor. I then added the newly created variable to the data frame.
+```{r}
+w1 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1960.x, X1960, X1960.y); colnames(w1) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w2 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1961.x, X1961, X1961.y); colnames(w2) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w3 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1962.x, X1962, X1962.y); colnames(w3) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w4 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1963.x, X1963, X1963.y); colnames(w4) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w5 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1964.x, X1964, X1964.y); colnames(w5) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w6 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1965.x, X1965, X1965.y); colnames(w6) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w7 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1966.x, X1966, X1966.y); colnames(w7) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w8 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1967.x, X1967, X1967.y); colnames(w8) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w10 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1968.x, X1968, X1968.y); colnames(w10) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w11 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1969.x, X1969, X1969.y); colnames(w11) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w12 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1970.x, X1970, X1970.y); colnames(w12) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w13 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1971.x, X1971, X1971.y); colnames(w13) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w14 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1972.x, X1972, X1972.y); colnames(w14) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w15 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1973.x, X1973, X1973.y); colnames(w15) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w16 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1974.x, X1974, X1974.y); colnames(w16) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w17 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1975.x, X1975, X1975.y); colnames(w17) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w18 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1976.x, X1976, X1976.y); colnames(w18) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w19 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1977.x, X1977, X1977.y); colnames(w19) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w20 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1978.x, X1978, X1978.y); colnames(w20) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w21 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1979.x, X1979, X1979.y); colnames(w21) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w22 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1980.x, X1980, X1980.y); colnames(w22) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w23 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1981.x, X1981, X1981.y); colnames(w23) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w24 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1982.x, X1982, X1982.y); colnames(w24) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w25 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1983.x, X1983, X1983.y); colnames(w25) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w26 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1984.x, X1984, X1984.y); colnames(w26) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w27 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1985.x, X1985, X1985.y); colnames(w27) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w28 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1986.x, X1986, X1986.y); colnames(w28) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w29 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1987.x, X1987, X1987.y); colnames(w29) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w30 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1988.x, X1988, X1988.y); colnames(w30) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w31 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1989.x, X1989, X1989.y); colnames(w31) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w32 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1990.x, X1990, X1990.y); colnames(w32) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w33 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1991.x, X1991, X1991.y); colnames(w33) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w34 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1992.x, X1992, X1992.y); colnames(w34) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w35 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1993.x, X1993, X1993.y); colnames(w35) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w36 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1994.x, X1994, X1994.y); colnames(w36) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w37 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1995.x, X1995, X1995.y); colnames(w37) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w38 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1996.x, X1996, X1996.y); colnames(w38) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w39 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1997.x, X1997, X1997.y); colnames(w39) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w40 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1998.x, X1998, X1998.y); colnames(w40) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w41 <- wdi3 %>% select(Country.Code, Country.Name, Region, X1999.x, X1999, X1999.y); colnames(w41) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w42 <- wdi3 %>% select(Country.Code, Country.Name, Region, X2000.x, X2000, X2000.y); colnames(w42) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w43 <- wdi3 %>% select(Country.Code, Country.Name, Region, X2001.x, X2001, X2001.y); colnames(w43) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w44 <- wdi3 %>% select(Country.Code, Country.Name, Region, X2002.x, X2002, X2002.y); colnames(w44) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w45 <- wdi3 %>% select(Country.Code, Country.Name, Region, X2003.x, X2003, X2003.y); colnames(w45) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w46 <- wdi3 %>% select(Country.Code, Country.Name, Region, X2004.x, X2004, X2004.y); colnames(w46) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w47 <- wdi3 %>% select(Country.Code, Country.Name, Region, X2005.x, X2005, X2005.y); colnames(w47) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w48 <- wdi3 %>% select(Country.Code, Country.Name, Region, X2006.x, X2006, X2006.y); colnames(w48) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w49 <- wdi3 %>% select(Country.Code, Country.Name, Region, X2007.x, X2007, X2007.y); colnames(w49) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w50 <- wdi3 %>% select(Country.Code, Country.Name, Region, X2008.x, X2008, X2008.y); colnames(w50) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w51 <- wdi3 %>% select(Country.Code, Country.Name, Region, X2009.x, X2009, X2009.y); colnames(w51) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w52 <- wdi3 %>% select(Country.Code, Country.Name, Region, X2010.x, X2010, X2010.y); colnames(w52) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w53 <- wdi3 %>% select(Country.Code, Country.Name, Region, X2011.x, X2011, X2011.y); colnames(w53) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w54 <- wdi3 %>% select(Country.Code, Country.Name, Region, X2012.x, X2012, X2012.y); colnames(w54) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w55 <- wdi3 %>% select(Country.Code, Country.Name, Region, X2013.x, X2013, X2013.y); colnames(w55) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w56 <- wdi3 %>% select(Country.Code, Country.Name, Region, X2014.x, X2014, X2014.y); colnames(w56) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w57 <- wdi3 %>% select(Country.Code, Country.Name, Region, X2015.x, X2015, X2015.y); colnames(w57) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w58 <- wdi3 %>% select(Country.Code, Country.Name, Region, X2016.x, X2016, X2016.y); colnames(w58) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+w59 <- wdi3 %>% select(Country.Code, Country.Name, Region, X2017.x, X2017, X2017.y); colnames(w59) <- c("Country.Code", "Country.Name", "Region", "X1960.x", "X1960", "X1960.y")
+
+
+wdi3_2 <- bind_rows(w1, w2, w3, w4, w5, w6, w7, w8, w10, w11, w12, w13, w14, w15, w16, w17, w18, w19, w20, w21, w22, w23, w24, w25, w26, w27, w28, w29, w30, w31, 
+                w32, w33, w34, w35, w36, w37, w38, w39, w40, w41, w42, w43, w44, w45, w46, w47, w48, w49, w50, w51, w52, w53, w54, w55, w56, w57, w58, w59)
+
+Year <- c(rep(1, 217), rep(2, 217), rep(3, 217), rep(4, 217), rep(5, 217), rep(6, 217), rep(7, 217), rep(8, 217), rep(9, 217), rep(10, 217), rep(11, 217), rep(12, 217), rep(13, 217), rep(14, 217), rep(15, 217),
+          rep(16, 217), rep(17, 217), rep(18, 217), rep(19, 217), rep(20, 217), rep(21, 217), rep(22, 217), rep(23, 217), rep(24, 217), rep(25, 217), rep(26, 217), rep(27, 217), rep(28, 217), rep(29, 217),
+               rep(30, 217), rep(31, 217), rep(32, 217), rep(33, 217), rep(34, 217), rep(35, 217), rep(36, 217), rep(37, 217), rep(38, 217), rep(39, 217), rep(40, 217), rep(41, 217), rep(42, 217), rep(43, 217), rep(44, 217),
+               rep(45, 217), rep(46, 217), rep(47, 217), rep(48, 217), rep(49, 217), rep(50, 217), rep(51, 217), rep(52, 217), rep(53, 217), rep(54, 217), rep(55, 217), rep(56, 217), rep(57, 217), rep(58, 217))
+year <- factor(Year, levels = c(1:58), labels = c( "1960", "1961", "1962", "1963", "1964", "1965", "1966", "1967", "1968", "1969","1970", "1971", "1972", "1973", "1974", "1975", "1976", "1977", "1978", "1979",
+                                               "1980", "1981", "1982", "1983", "1984", "1985", "1986", "1987", "1988", "1989", "1990", "1991", "1992", "1993", "1994", "1995", "1996", "1997", "1998", "1999","2000",
+                                               "2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010","2011","2012","2013","2014","2015","2016","2017"))
+wdi3_2 <- data.frame(wdi3_2, year)
+str(wdi3_2)
+head(wdi3_2,1)
+tail(wdi3_2)
+```
+I then renamed the columns of the data frame, and I finally was able to create the interactive visualization 
+```{r}
+ wdi3_2 <- wdi3_2 %>% select(Country.Code, Country.Name, Region, year, X1960.x, X1960.y, X1960) 
+ colnames(wdi3_2) <- c( "code", "country", "region", "year", "lifeExp,", "pop", "fertilityRt")
+
+library(plotly)
+
+p7 <- wdi3_2 %>% plot_ly(x = ~`lifeExp,`, y = ~fertilityRt, size= ~pop, color = ~region, frame = ~ year, text= ~country, hoverinfo ="text", type = 'scatter', mode = 'markers') %>% layout(xaxis = list(type = "log"))
+p7
+
+```
+
