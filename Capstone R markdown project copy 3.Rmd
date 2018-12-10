@@ -1,0 +1,350 @@
+---
+title: "Capstone Project Rmarkdown"
+author: "Jonathan Bentley"
+date: "11/29/2018"
+output: html_document
+---
+  The data that I wanted to use for this project is a data set called Adult on the UCI Machine Learning Repository website. One of the main reasons I chose this data set is because it provided meaningful descriptions of the variables in contrast to some other data sets on the UCI Machine learning Repository website. I also chose this data set because it was primarily a social science data set, and I come from a social science background (psychology). 
+
+  The first thing I did was I imported the packages that I would need to do all of my analysis. I then imported the data set off of the website and I changed the names to be similar to those listed on the website. I called this initial data set SocialData because it is a social science data set.
+```{r}
+library(data.table)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(DT)
+library(tidyr)
+library(corrplot)
+library(leaflet)
+library(lubridate)
+library(kernlab)
+library(caret)
+library(lattice)
+library(e1071)
+library(rattle)
+library(ISLR)
+library(party)
+library(rattle)
+library(rpart)
+library(tree)
+library(forcats)
+
+SocialData <- read.csv("https://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data")
+
+
+colnames(SocialData) <- c("age", "workclass", "fnlwgt", "education","education-num", "marital-status", "occupation", "relationship", "race", "sex", "capital-gain", "capital-loss", "hours-per-week", "native-country", "income level")
+```
+  The outcome variable for this data set is called income, and this is a categorical variable with two levels: a person having an income that is greater than 50,000 dollars a year and a person with an income that is lower than 50,000 dollars a year. 
+  I then sought to examine how money correlates with happiness on a global scale, and I came across this website: https://www.economist.com/graphic-detail/2010/11/25/money-and-happiness. When looking at this graph one can see that those countries with much higher levels of GDP per capita income had a much happier population than those with lower levels of GDP per capita income. This means that higher income may be a major factor in influencing the happiness levels of a population. Therefore predicting which characteristics of an individual may lead to higher incomes for those individuals may be critical for understanding how a country can increase its average levels of happiness.
+  But not only is it important to see which factors influence a persons income, but it is important to utilize factors that people can control versus those that they cannot control. For example people can control what type of work field they go into, but they cannot control what type of gender they are born into. This is not to say that those factors that people can control are easy to attain or change. For Some of these factors people have control over can be very hard to attain such as an education. However these factors that people can control are possible to change versus impossible to change such as which nationality someone is born into. 
+  Therefore I subsetted the data into a data set that only contained variables with factors that people can control. I named this data set SDOpportunity for Social Science Opportunity. I then partitioned the data into a testing and training set. So as to train my models on the training set and test their accuracies on the testing set.
+
+```{r,echo=FALSE, results='asis', message = FALSE, error = FALSE, warning= FALSE}
+require(ggplot2)
+SDOpportunity <- SocialData %>% select(workclass, education, `marital-status`, occupation, `capital-gain`, `capital-loss`, `hours-per-week`, `income level`)
+head(SDOpportunity)
+validation_index <- createDataPartition(SDOpportunity$`income level`, p=0.50, list=FALSE)
+SDOpportunityTest <- SDOpportunity[-validation_index,]
+SDOpportunityTrain <- SDOpportunity[validation_index,];SDOpportunityTrain <- SDOpportunityTrain[-13856:-13857,]; rownames(SDOpportunityTrain) <- NULL
+sapply(SDOpportunityTrain, class)
+
+```
+  I then examined the characteristics of the data set. I primarily looked at the outcome variable income, and the quantitative variables: capital gain, capital loss, and hours worked per week. Capital gain is just how much profit a person made in business investments. Capital loss is how much profit a person lost in their business investments. The first table and plot shows that there were a lot more people with incomes lower than 50,000 than greater with a lower than percentage of approximately 76 %. The box plots and histograms show that for both the variables capital loss and capital gain there were many people who did not invest in any businesses. One can also see that there were a few outliers of people who made a great deal of money from their investments. The distribution for hours worked per week was fairly normal except there were a lot of people who worked around forty hours per week. The last plots show that the distributions for all three variables were fairly similar between those who have low income and those with a high income.
+
+```{r}
+percentage <- prop.table(table(SDOpportunityTrain$`income level`)) * 100
+cbind(freq=table(SDOpportunityTrain$`income level`), percentage=percentage)
+plot(SDOpportunity$`income level`)
+
+SDOpportunity %>% ggplot(aes(x =  `income level`, y = `capital-gain`, SDOpportunity)) + geom_boxplot(fill = "Green", colour = "Black")  + labs("Capital Gain") 
+SDOpportunity %>% ggplot(aes(x = `income level` , y = `capital-loss`, SDOpportunity)) + geom_boxplot(fill = "Green", colour = "Black")  + labs("Capital Loss") 
+SDOpportunity %>% ggplot(aes(x = `income level` , y = `hours-per-week`, SDOpportunity)) + geom_boxplot(fill = "Green", colour = "Black") + labs("Hours Per Week") 
+
+SDOpportunity %>% ggplot(aes(SDOpportunity$`capital-gain`))  + geom_histogram(fill = "Blue") + labs(x = "Capital Gain", y = "Frequency") 
+SDOpportunity %>% ggplot(aes(SDOpportunity$`capital-loss`))  + geom_histogram(fill = "Blue") + labs(x = "Capital Loss", y = "Frequency")
+SDOpportunity %>% ggplot(aes(SDOpportunity$`hours-per-week`))  + geom_histogram(fill = "Blue") + labs(x = "Hours Per Week", y = "Frequency")
+
+
+x <- SDOpportunityTrain[,5:7]
+y <- SDOpportunityTrain[,8]
+scales <- list(x=list(relation="free"), y=list(relation="free"))
+featurePlot(x=x, y=y, plot="density", scales=scales)
+```
+The next thing I wanted to know is which variables were related to the outcome variable (income). I wanted to know this because I wanted to know which variables would be best to test for trying to find the optimal model for classification. The first thing I did was create the number of cross validation splits to be ten. I did this because this has been seen as a good number of splits for many types of analysis. I then made the metric to be accuracy because I am concerned about how accurate my model is. Lastly I ran many decision tree classifications with each variable individually predicting income. I chose the decision tree classification because in the future I want to create decision tree visualizations out of my model. 
+I also used a formula that I derived myself that I named TN and TP similarity (true negative rate and true positive rate similarity). What this formula essentially does is it gives a percentage for how similar the true negative rate and true positive rate are. The reason I used this calculation is because it was equally important for me to classify whether someone was correctly classifiec as having a lower than 50,000 dollar income (TN: True Negative) as it was for me to classify someone as having a higher than 50,000 dollar income (TP: True Positive). The results show that four variables were related to the outcome: work class, education, capital gain, and capital loss. All the variables had similar accuracies but education and capital gain had much higher true negative and true positive similarities. The accuracies and TN and TP similarites are displayed for each calculation.
+```{r}
+control <- trainControl(method="cv", number = 10)
+metric <- "Accuracy"
+
+Variable_acc_workclass  <- train(x = SDOpportunityTrain["workclass"], y = SDOpportunityTrain$`income level`, method = "rpart", metric=metric, trControl = control)
+Variable_acc_education  <- train(x = SDOpportunityTrain["education"], y = SDOpportunityTrain$`income level`, method = "rpart", metric=metric, trControl = control)
+Variable_acc_marital_status <- train(x = SDOpportunityTrain["marital-status"], y = SDOpportunityTrain$`income level`, method = "rpart", metric=metric, trControl = control)
+Variable_acc_occupation  <- train(x = SDOpportunityTrain["occupation"], y = SDOpportunityTrain$`income level`, method = "rpart", metric=metric, trControl = control)
+Variable_acc_capital_gain  <- train(x = SDOpportunityTrain["capital-gain"], y = SDOpportunityTrain$`income level`, method = "rpart", metric=metric, trControl = control)
+Variable_acc_capital_loss <-  train(x = SDOpportunityTrain["capital-loss"], y = SDOpportunityTrain$`income level`, method = "rpart", metric=metric, trControl = control)
+Variable_acc_hours_per_week  <- train(x = SDOpportunityTrain["hours-per-week"], y = SDOpportunityTrain$`income level`, method = "rpart", metric=metric, trControl = control)
+
+cart.probs1=predict(Variable_acc_workclass,SDOpportunityTest,type="prob")
+
+glm.predcart1=rep(" <=50K", 16279)
+glm.predcart1[cart.probs1$` >50K`>.5]=" >50K"
+glm.predcart1 <- as.factor(glm.predcart1)
+confusionMatrix(glm.predcart1, SDOpportunityTest$`income level`)
+# FN and TN similarity
+#  TN  FN
+#  FP  TP
+TN = 12133;FP = 226; TP = 321; FN = 3599; FN_TN_Similarity <- abs(TN/( TN+ FP) - TP/(TP + FN)); paste(round(100*(1-FN_TN_Similarity), 0), "%")
+#True negative rate
+True_Negative <- TN/( TN+ FP); paste(round(100*(True_Negative), 0), "%")
+#True positive rate
+True_Positive <- TP/(TP + FN); paste(round(100*(True_Positive), 0), "%")
+# Accuracy =.77 , FN and TN similarity = 10 %, True negative rate = 98 %, True positive rate = 8 %
+
+
+
+cart.probs2=predict(Variable_acc_education,SDOpportunityTest,type="prob")
+
+glm.predcart2=rep(" <=50K", 16279)
+glm.predcart2[cart.probs2$` >50K`>.5]=" >50K"
+glm.predcart2 <- as.factor(glm.predcart2)
+confusionMatrix(glm.predcart2, SDOpportunityTest$`income level`)
+# FN and TN similarity
+#  TN  FN
+#  FP  TP
+TN = 11841;FP = 518; TP = 851; FN = 3069; FN_TN_Similarity <- abs(TN/( TN+ FP) - TP/(TP + FN)); paste(round(100*(1-FN_TN_Similarity), 0), "%")
+#True negative rate
+True_Negative <- TN/( TN+ FP); paste(round(100*(True_Negative), 0), "%")
+#True positive rate
+True_Positive <- TP/(TP + FN); paste(round(100*(True_Positive), 0), "%")
+# Accuracy = .78, FN and TN similarity = 26 %, True negative rate = 96%, True positive rate = 22%
+
+
+
+cart.probs3=predict(Variable_acc_marital_status,SDOpportunityTest,type="prob")
+
+glm.predcart3=rep(" <=50K", 16279)
+glm.predcart3[cart.probs3$` >50K`>.5]=" >50K"
+glm.predcart3 <- as.factor(glm.predcart3)
+confusionMatrix(glm.predcart3, SDOpportunityTest$`income level`)
+
+# This variable did not predict that anyone would have an income greater than 50,000
+
+cart.probs4=predict(Variable_acc_occupation,SDOpportunityTest,type="prob")
+
+glm.predcart4=rep(" <=50K", 16279)
+glm.predcart4[cart.probs4$` >50K`>.5]=" >50K"
+glm.predcart4 <- as.factor(glm.predcart4)
+confusionMatrix(glm.predcart4, SDOpportunityTest$`income level`)
+
+# This variable did not predict that anyone would have an income greater than 50,000
+
+cart.probs5=predict(Variable_acc_capital_gain,SDOpportunityTest,type="prob")
+
+glm.predcart5=rep(" <=50K", 16279)
+glm.predcart5[cart.probs5$` >50K`>.5]=" >50K"
+glm.predcart5 <- as.factor(glm.predcart5)
+confusionMatrix(glm.predcart5, SDOpportunityTest$`income level`)
+# FN and TN similarity
+#  TN  FN
+#  FP  TP
+TN = 12310; FP = 49; TP = 838; FN = 3082; FN_TN_Similarity <- abs(TN/( TN+ FP) - TP/(TP + FN)); paste(round(100*(1-FN_TN_Similarity), 0), "%"); 
+#True negative rate
+True_Negative <- TN/( TN+ FP); paste(round(100*(True_Negative), 0), "%")
+#True positive rate
+True_Positive <- TP/(TP + FN); paste(round(100*(True_Positive), 0), "%")
+# Accuracy = .80, FN and TN similarity = 22%, True negative rate = .99%, True positive rate = .21%
+
+cart.probs6=predict(Variable_acc_capital_loss,SDOpportunityTest,type="prob")
+
+glm.predcart6=rep(" <=50K", 16279)
+glm.predcart6[cart.probs6$` >50K`>.5]=" >50K"
+glm.predcart6 <- as.factor(glm.predcart6)
+confusionMatrix(glm.predcart6, SDOpportunityTest$`income level`)
+
+# FN and TN similarity
+#  TN  FN
+#  FP  TP
+TN = 12305; FP = 54; TP = 346; FN = 3574; FN_TN_Similarity <- abs(TN/( TN+ FP) - TP/(TP + FN)); paste(round(100*(1-FN_TN_Similarity), 0), "%"); 
+#True negative rate
+True_Negative <- TN/( TN+ FP); paste(round(100*(True_Negative), 0), "%")
+#True positive rate
+True_Positive <- TP/(TP + FN); paste(round(100*(True_Positive), 0), "%")
+# Accuracy = .77 %, FN and TN similarity = 9 %, True negative rate = 99 %, True positive rate = 9 %
+
+cart.probs7=predict(Variable_acc_hours_per_week,SDOpportunityTest,type="prob")
+
+glm.predcart7=rep(" <=50K", 16279)
+glm.predcart7[cart.probs7$` >50K`>.5]=" >50K"
+glm.predcart7 <- as.factor(glm.predcart7)
+confusionMatrix(glm.predcart7, SDOpportunityTest$`income level`)
+
+# This variable did not predict that anyone would have an income greater than 50,000
+
+#variables that you can use include: work class, education, capital gain, capital loss
+```
+Furthermore, I created mutliple models with different combinations of all of the variables, and not too suprisingly the model with only education and capital gain as the predictors were used in the analysis. This was the model I chose for the remainder of the analysis. 
+```{r}
+DT_modelm1 <- train(x = SDOpportunityTrain[ c("workclass", "education", "capital-gain", "capital-loss")], y = SDOpportunityTrain$`income level`, method = "rpart", metric=metric, trControl = control)
+
+
+cart.probsm1=predict(DT_modelm1,SDOpportunityTest,type="prob")
+
+glm.predcartm1=rep(" <=50K", 16279)
+glm.predcartm1[cart.probsm1$` >50K`>.5]=" >50K"
+glm.predcartm1 <- as.factor(glm.predcartm1)
+confusionMatrix(glm.predcartm1, SDOpportunityTest$`income level`)
+
+DT_modelm2 <- train(x = SDOpportunityTrain[ c( "education", "capital-gain")], y = SDOpportunityTrain$`income level`, method = "rpart", metric=metric, trControl = control)
+
+
+cart.probsm2=predict(DT_modelm2,SDOpportunityTest,type="prob")
+
+glm.predcartm2=rep(" <=50K", 16279)
+glm.predcartm2[cart.probsm2$` >50K`>.5]=" >50K"
+glm.predcartm2 <- as.factor(glm.predcartm2)
+confusionMatrix(glm.predcartm2, SDOpportunityTest$`income level`)
+
+
+DT_modelm3 <- train(x = SDOpportunityTrain[ c( "education", "capital-gain", "capital-loss")], y = SDOpportunityTrain$`income level`, method = "rpart", metric=metric, trControl = control)
+
+
+cart.probsm3=predict(DT_modelm3,SDOpportunityTest,type="prob")
+
+glm.predcartm3=rep(" <=50K", 16279)
+glm.predcartm3[cart.probsm3$` >50K`>.5]=" >50K"
+glm.predcartm3 <- as.factor(glm.predcartm3)
+confusionMatrix(glm.predcartm3, SDOpportunityTest$`income level`)
+
+DT_modelm4 <- train(x = SDOpportunityTrain[ c( "education", "capital-gain", "workclass")], y = SDOpportunityTrain$`income level`, method = "rpart", metric=metric, trControl = control)
+
+
+cart.probsm4=predict(DT_modelm4,SDOpportunityTest,type="prob")
+
+glm.predcartm4=rep(" <=50K", 16279)
+glm.predcartm4[cart.probsm4$` >50K`>.5]=" >50K"
+glm.predcartm4 <- as.factor(glm.predcartm4)
+confusionMatrix(glm.predcartm4, SDOpportunityTest$`income level`)
+```
+The chosen optimal model had an accuracy of 81 % and a TN and TP similarity of 40 % which means the true negative rate and the true positive rate were forty percent similar which is pretty decent compared to some other models.
+```{r}
+DT_modelm2 <- train(x = SDOpportunityTrain[ c( "education", "capital-gain")], y = SDOpportunityTrain$`income level`, method = "rpart", metric=metric, trControl = control)
+
+
+cart.probsm2=predict(DT_modelm2,SDOpportunityTest,type="prob")
+
+glm.predcartm2=rep(" <=50K", 16279)
+glm.predcartm2[cart.probsm2$` >50K`>.5]=" >50K"
+glm.predcartm2 <- as.factor(glm.predcartm2)
+confusionMatrix(glm.predcartm2, SDOpportunityTest$`income level`)
+
+# FN and TN similarity
+#  TN  FN
+#  FP  TP
+TN = 11806; FP = 553; TP = 1391; FN = 2529; FN_TN_Similarity <- abs(TN/( TN+ FP) - TP/(TP + FN)); paste(round(100*(1-FN_TN_Similarity), 0), "%"); 
+#True negative rate
+True_Negative <- TN/( TN+ FP); paste(round(100*(True_Negative), 0), "%")
+#True positive rate
+True_Positive <- TP/(TP + FN); paste(round(100*(True_Positive), 0), "%")
+# Accuracy = 81 %, FN and TN similarity = 40%, True negative rate = 96 %, True positive rate = 35 %
+```
+Now to get a better idea of what this classification means I have created a few decision trees. The first three decision trees utilized the original variables were education had all the levels one can think of for education ie " pre- school, first grade, second grade ......... doctorate, professional school"). These set of graphs showed that those with higher capital gains and educations had a very high chance of making over fifty thousand dollars a year. Whereas those with lower educations and capital gains had a very low chance. Unfortunately, the graphs were hard to interpret because there were so many factor levels in the variable education. Due to this I collapsed the factor levels of education to be only three levels: low education, moderate education, and advanced education. The second set of visualizations show similar information with the difference being that these graphs are more readable. These graphs show that individuals with a capital gain being higher than 6,849 dollars and an advanced education had 100 % chance of being classified as making 50,000 dollars a year. Whereas those who had a capital gain lower than 5,060 dollars and a low education had nearly a zero percent chance of making of 50,000 dollars a year.
+
+```{r}
+fitmodelm2  <-ctree(`income level`~ education + `capital-gain`, data = SDOpportunity)
+plot(fitmodelm2 )
+
+plot(fitmodelm2 , type="simple",
+     inner_panel=node_inner(fitmodelm2 ,
+                            abbreviate = TRUE,
+                            pval = FALSE,
+                            id = FALSE),
+     terminal_panel=node_terminal(fitmodelm2 ,
+                                  abbreviate = TRUE,
+                                  digits = 1,
+                                  fill = c("white"),
+                                  id = FALSE)
+)
+
+fit_rpart_modelm2  <- rpart(`income level`~ education + `capital-gain`, data = SDOpportunity, method = "class")
+fancyRpartPlot(fit_rpart_modelm2 )
+
+#Here I decided to collapse the levels within the variable education so as to make the decision tree more readable
+levels(SDOpportunity$education)
+education2 <- SDOpportunity$education %>% fct_collapse(Low.Edu = c(" Preschool"," 1st-4th", " 5th-6th", " 7th-8th", " 9th", " 10th", " 11th", " 12th"), Moderate.Edu = c( " HS-grad", " Some-college",  " Assoc-voc",  " Assoc-acdm"), Advanced.Educ = c(" Bachelors", " Masters", " Doctorate", " Prof-school")) 
+
+SDOpportunity2 <- SDOpportunity %>% mutate(education = education2)
+
+fitmodelm2educ_collapse  <- ctree(`income level`~ education + `capital-gain`, data = SDOpportunity2)
+plot(fitmodelm2educ_collapse)
+
+plot(fitmodelm2educ_collapse, type="simple",
+     inner_panel=node_inner(fitmodelm2educ_collapse,
+                            abbreviate = TRUE,
+                            pval = FALSE,
+                            id = FALSE),
+     terminal_panel=node_terminal(fitmodelm2educ_collapse,
+                                  abbreviate = TRUE,
+                                  digits = 1,
+                                  fill = c("white"),
+                                  id = FALSE)
+)
+```
+The last step taken in this rigorous examination of this data set was to find out which classification algorithm most accurately assesses the chosen optimal model. Initially I tried many algorithms: k- nearest neighbor, decision trees, logistic regression, linear discriminant analysis, supervised vector machines, and random forests; but k nearest neighbor was not chosen because it was very inaccurate, and random forest and supervised vector machines were not chosen because they took too long to compute (around forty minutes each). Therefore, only logistic regression, linear discriminate analysis, and decision trees where chosen for the model. The optimal algorithm was not suprisingly decision trees. This is not suprising because the optimal model was derived using the decision tree algorithm. Furthermore although logistic regression had a higher accuracy than linear discriminant analysis I would use linear discriminant analysis over logistic regression because it had a slightly higher TN and TP similarity than logistic regression had. 
+```{r}
+
+fit.ldam4 <- train(`income level`~ education + `capital-gain`, data=SDOpportunityTrain, method = "lda", metric=metric, trControl = control)
+ldam4.probs=predict(fit.ldam4,SDOpportunityTest,type="prob")
+
+
+glm.predldam4=rep(" <=50K", 16279)
+glm.predldam4[ldam4.probs$` >50K`>.5]=" >50K"
+glm.predldam4 <- as.factor(glm.predldam4)
+confusionMatrix(glm.predldam4, SDOpportunityTest$`income level`)
+
+# FN and TN similarity
+#  TN  FN
+#  FP  TP
+TN = 11839; FP = 520; TP = 1054; FN = 2866; FN_TN_Similarity <- abs(TN/( TN+ FP) - TP/(TP + FN)); paste(round(100*(1-FN_TN_Similarity), 0), "%"); 
+#True negative rate
+True_Negative <- TN/( TN+ FP); paste(round(100*(True_Negative), 0), "%")
+#True positive rate
+True_Positive <- TP/(TP + FN); paste(round(100*(True_Positive), 0), "%")
+# Accuracy = .79, FN and TN similarity = 31 %, True negative rate = 96 %, True positive rate = 27 %
+
+
+fit.logistm4 <- train(`income level`~ education + `capital-gain`, data=SDOpportunityTrain, method = "glm",family = binomial,  metric=metric, trControl = control)
+logistm4.probs=predict(fit.logistm4,SDOpportunityTest,type="prob")
+
+glm.predlogistm4=rep(" <=50K", 16279)
+glm.predlogistm4[logistm4.probs$` >50K`>.5]=" >50K"
+glm.predlogistm4 <- as.factor(glm.predlogistm4)
+confusionMatrix(glm.predlogistm4, SDOpportunityTest$`income level`)
+
+# FN and TN similarity
+#  TN  FN
+#  FP  TP
+TN = 12109; FP = 250; TP = 1038; FN = 2882; FN_TN_Similarity <- abs(TN/( TN+ FP) - TP/(TP + FN)); paste(round(100*(1-FN_TN_Similarity), 0), "%"); 
+#True negative rate
+True_Negative <- TN/( TN+ FP); paste(round(100*(True_Negative), 0), "%")
+#True positive rate
+True_Positive <- TP/(TP + FN); paste(round(100*(True_Positive), 0), "%")
+# Accuracy = .81, FN and TN similarity = 29 %, True negative rate = 98%, True positive rate = 26 %
+
+
+# Here is a Comparison of the results from each type of algorithm
+# 1 Decision Tree
+# 2 linear discriminant analysis
+# 3 logistic regression 
+# 1 # Accuracy = 81 %, FN and TN similarity = 40%, True negative rate = 96 %, True positive rate = 35 %
+# 2 # Accuracy = .79, FN and TN similarity = 31 %, True negative rate = 96 %, True positive rate = 27 %
+# 3 # Accuracy = .81, FN and TN similarity = 29 %, True negative rate = 98%, True positive rate = 26 %
+
+
+results <- resamples(list(lda=fit.ldam4, cart=DT_modelm2, logist=fit.logistm4))
+
+summary(results)
+par(mfrow=c(2,1))
+dotplot(results)
+```
+
+
