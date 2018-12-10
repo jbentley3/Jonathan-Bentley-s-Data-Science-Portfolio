@@ -1,0 +1,264 @@
+---
+title: "Advanced Data Wrangling"
+author: "Jonathan Bentley"
+date: "11/6/2018"
+output: html_document
+---
+  For this project I wanted to do two things. First I wanted to run a regression on a data set called corporate tax. For this part I wanted to see what variables predict gdp per capita growth. For the second part, I wanted to query specific data from multiple data sets. The data sets that I wanted to get specific data from consisted of information on each county. each data set was separated by year (from 2009 to 2016). Other than the difference of each data set due to year each data set was virtually the same and had the same variables. The only things that differed were the individual observations within each county, and a few data sets had one extra county not included in the others.
+  
+  The first thing I did was import the data.
+```{r}
+P02_Corporate.tax <- read.csv("~/Desktop/ Data Science GitHub Directory/Jonathan-Bentley-s-Data-Science-Portfolio/P02_Corporate tax copy.csv")
+attach(P02_Corporate.tax)
+ACS_09 <- read.csv("~/Desktop/ Data Science GitHub Directory/Jonathan-Bentley-s-Data-Science-Portfolio/ACS_DP02 data/ACS_09_5YR_DP02_with_ann.csv")
+ACS_10 <- read.csv("~/Desktop/ Data Science GitHub Directory/Jonathan-Bentley-s-Data-Science-Portfolio/ACS_DP02 data/ACS_10_5YR_DP02_with_ann.csv")
+ACS_11 <- read.csv("~/Desktop/ Data Science GitHub Directory/Jonathan-Bentley-s-Data-Science-Portfolio/ACS_DP02 data/ACS_11_5YR_DP02_with_ann.csv")
+ACS_12 <- read.csv("~/Desktop/ Data Science GitHub Directory/Jonathan-Bentley-s-Data-Science-Portfolio/ACS_DP02 data/ACS_12_5YR_DP02_with_ann.csv")
+ACS_13 <- read.csv("~/Desktop/ Data Science GitHub Directory/Jonathan-Bentley-s-Data-Science-Portfolio/ACS_DP02 data/ACS_13_5YR_DP02_with_ann.csv")
+ACS_14 <- read.csv("~/Desktop/ Data Science GitHub Directory/Jonathan-Bentley-s-Data-Science-Portfolio/ACS_DP02 data/ACS_14_5YR_DP02_with_ann.csv")
+ACS_15 <- read.csv("~/Desktop/ Data Science GitHub Directory/Jonathan-Bentley-s-Data-Science-Portfolio/ACS_DP02 data/ACS_15_5YR_DP02_with_ann.csv")
+ACS_16 <- read.csv("~/Desktop/ Data Science GitHub Directory/Jonathan-Bentley-s-Data-Science-Portfolio/ACS_DP02 data/ACS_16_5YR_DP02_with_ann.csv")
+```
+For the first part of part one I wanted to create new variable names that were easier to understand than those provided in the data set. I then created a new variable which consists of the interaction between corporate tax rate and debt to gdp ratio. I then added this new variable to the dataframe. 
+```{r}
+colnames(P02_Corporate.tax) <- c("Country", "GDP per capita growth", "Corporate tax rate", "GDP per capita 2000", "Debt to GDP ratio", "High trade openness", "ihc", "y2000")
+Corporate.tax.rate_Debt.to.GDP.ratio <- P02_Corporate.tax$`Corporate tax rate` * P02_Corporate.tax$`Debt to GDP ratio`
+
+P02C <- data.frame(P02_Corporate.tax, Corporate.tax.rate_Debt.to.GDP.ratio)
+attach(P02C)
+```
+There are three linear regression equations that I used to predict the gdp per capita growth. I label these equations as equation one, equation two, and equation three. In equation one corporate tax rate is used to predict gdp per capita growth. In equation two corporate tax rate and gdp per capita 2000 are used to predict gdp growth. In equation three corporate tax rate, gdp per capita 2000, debt to gdp ratio, and the interaction between corporate tax rate and debt to gdp ratio are used to predict gdp per capita growth 
+```{r}
+Equation_1 <- lm(GDP.per.capita.growth ~ Corporate.tax.rate, data=P02C)
+Equation_2 <- lm(GDP.per.capita.growth ~ Corporate.tax.rate + GDP.per.capita.2000, data=P02C)
+Equation_3 <- lm(GDP.per.capita.growth ~ Corporate.tax.rate + GDP.per.capita.2000 + Debt.to.GDP.ratio + Corporate.tax.rate_Debt.to.GDP.ratio, data=P02C)
+```
+The results show that the coefficients matched up with those in the article "Will a Lower Corporate Tax Rate Boost Economic Growth. The Coefficients came out to alpha = 5.13, B1 = -.12. Below is the linear equation for equation one.
+
+```{r}
+summary(Equation_1)
+```
+The results show that the coefficients matched up with those in the article. The Coefficients came out to alpha = 5.3, B1 = -.1, B2 = -.0002. Below is the linear equation two
+```{r}
+summary(Equation_2)
+```
+The results show that the coefficients matched up with those in the article. The Coefficients came out to alpha = 8.1, B1 = -.16, B2 = -.0002, B3 = -.07, B4 = .0019. Below is the linear equation three
+```{r}
+summary(Equation_3)
+```
+For part two of this project I first imported the data from each ACS data set (each for year). I also performed a similar programming on each of the data sets so as to select desired variables, convert these variables to numeric values, delete the first non-numeric row, and to obtain the CHCI values. This was done identically for each data set
+```{r}
+
+attach(ACS_09)
+ACS_09 <- data.frame(ACS_09[,2], ACS_09[,3], ACS_09[,232], ACS_09[,238], ACS_09[,242], ACS_09[,246], ACS_09[,250], ACS_09[,254], ACS_09[,258], ACS_09[,262])
+colnames(ACS_09) <- c("Id2", "Geography", "pop09", "% in less than 9th grade", "% in 9th to 12th grade", "% high school graduate", "% some college no degree", "% associates degree", "% bachelors degree", "% graduate or professional degree")
+ACS_09 <- ACS_09[-1,]
+rownames(ACS_09) <- NULL
+ACS_09 <- ACS_09[-2917,]
+rownames(ACS_09) <- NULL
+
+ACS_09[,3] <- as.numeric(as.character(ACS_09[,3]))
+ACS_09[,4] <- as.numeric(as.character(ACS_09[,4]))
+ACS_09[,5] <- as.numeric(as.character(ACS_09[,5]))
+ACS_09[,6] <- as.numeric(as.character(ACS_09[,6]))
+ACS_09[,7] <- as.numeric(as.character(ACS_09[,7]))
+ACS_09[,8] <- as.numeric(as.character(ACS_09[,8]))
+ACS_09[,9] <- as.numeric(as.character(ACS_09[,9]))
+ACS_09[,10] <- as.numeric(as.character(ACS_09[,10]))
+
+ACS_092 <- data.frame(50*.01*ACS_09[,4], 100*.01*ACS_09[,5], 120*.01*ACS_09[,6], 130*.01*ACS_09[,7], 140*.01*ACS_09[,8], 190*.01*ACS_09[,9], 230*.01*ACS_09[,10])
+ACS_092<-as.matrix(ACS_092)
+chci09 <- rowSums(ACS_092)
+
+
+
+
+attach(ACS_10)
+ACS_10 <- data.frame(ACS_10[,2], ACS_10[,3], ACS_10[,232], ACS_10[,238], ACS_10[,242], ACS_10[,246], ACS_10[,250], ACS_10[,254], ACS_10[,258], ACS_10[,262])
+colnames(ACS_10) <- c("Id2", "Geography", "pop10", "% in less than 9th grade", "% in 9th to 12th grade", "% high school graduate", "% some college no degree", "% associates degree", "% bachelors degree", "% graduate or professional degree")
+ACS_10 <- ACS_10[-1,]
+rownames(ACS_10) <- NULL
+ACS_10 <- ACS_10[-2917,]
+rownames(ACS_10) <- NULL
+
+
+ACS_10[,3] <- as.numeric(as.character(ACS_10[,3]))
+ACS_10[,4] <- as.numeric(as.character(ACS_10[,4]))
+ACS_10[,5] <- as.numeric(as.character(ACS_10[,5]))
+ACS_10[,6] <- as.numeric(as.character(ACS_10[,6]))
+ACS_10[,7] <- as.numeric(as.character(ACS_10[,7]))
+ACS_10[,8] <- as.numeric(as.character(ACS_10[,8]))
+ACS_10[,9] <- as.numeric(as.character(ACS_10[,9]))
+ACS_10[,10] <- as.numeric(as.character(ACS_10[,10]))
+
+ACS_102 <- data.frame(50*.01*ACS_10[,4], 100*.01*ACS_10[,5], 120*.01*ACS_10[,6], 130*.01*ACS_10[,7], 140*.01*ACS_10[,8], 190*.01*ACS_10[,9], 230*.01*ACS_10[,10])
+ACS_102<-as.matrix(ACS_102)
+chci10 <- rowSums(ACS_102)
+
+
+
+
+
+attach(ACS_11)
+ACS_11 <- data.frame(ACS_11[,2], ACS_11[,3], ACS_11[,232], ACS_11[,238], ACS_11[,242], ACS_11[,246], ACS_11[,250], ACS_11[,254], ACS_11[,258], ACS_11[,262])
+colnames(ACS_11) <- c("Id2", "Geography", "pop11", "% in less than 9th grade", "% in 9th to 12th grade", "% high school graduate", "% some college no degree", "% associates degree", "% bachelors degree", "% graduate or professional degree")
+ACS_11 <- ACS_11[-1,]
+rownames(ACS_11) <- NULL
+ACS_11 <- ACS_11[-2917,]
+rownames(ACS_11) <- NULL
+
+
+ACS_11[,3] <- as.numeric(as.character(ACS_11[,3]))
+ACS_11[,4] <- as.numeric(as.character(ACS_11[,4]))
+ACS_11[,5] <- as.numeric(as.character(ACS_11[,5]))
+ACS_11[,6] <- as.numeric(as.character(ACS_11[,6]))
+ACS_11[,7] <- as.numeric(as.character(ACS_11[,7]))
+ACS_11[,8] <- as.numeric(as.character(ACS_11[,8]))
+ACS_11[,9] <- as.numeric(as.character(ACS_11[,9]))
+ACS_11[,10] <- as.numeric(as.character(ACS_11[,10]))
+
+ACS_112 <- data.frame(50*.01*ACS_11[,4], 100*.01*ACS_11[,5], 120*.01*ACS_11[,6], 130*.01*ACS_11[,7], 140*.01*ACS_11[,8], 190*.01*ACS_11[,9], 230*.01*ACS_11[,10])
+ACS_112<-as.matrix(ACS_112)
+chci11 <- rowSums(ACS_112)
+
+
+
+
+
+attach(ACS_12)
+ACS_12 <- data.frame(ACS_12[,2], ACS_12[,3], ACS_12[,232], ACS_12[,238], ACS_12[,242], ACS_12[,246], ACS_12[,250], ACS_12[,254], ACS_12[,258], ACS_12[,262])
+colnames(ACS_12) <- c("Id2", "Geography", "pop12", "% in less than 9th grade", "% in 9th to 12th grade", "% high school graduate", "% some college no degree", "% associates degree", "% bachelors degree", "% graduate or professional degree")
+ACS_12 <- ACS_12[-1,]
+rownames(ACS_12) <- NULL
+ACS_12 <- ACS_12[-2917,]
+rownames(ACS_12) <- NULL
+
+
+ACS_12[,3] <- as.numeric(as.character(ACS_12[,3]))
+ACS_12[,4] <- as.numeric(as.character(ACS_12[,4]))
+ACS_12[,5] <- as.numeric(as.character(ACS_12[,5]))
+ACS_12[,6] <- as.numeric(as.character(ACS_12[,6]))
+ACS_12[,7] <- as.numeric(as.character(ACS_12[,7]))
+ACS_12[,8] <- as.numeric(as.character(ACS_12[,8]))
+ACS_12[,9] <- as.numeric(as.character(ACS_12[,9]))
+ACS_12[,10] <- as.numeric(as.character(ACS_12[,10]))
+
+ACS_122 <- data.frame(50*.01*ACS_12[,4], 100*.01*ACS_12[,5], 120*.01*ACS_12[,6], 130*.01*ACS_12[,7], 140*.01*ACS_12[,8], 190*.01*ACS_12[,9], 230*.01*ACS_12[,10])
+ACS_122<-as.matrix(ACS_122)
+chci12 <- rowSums(ACS_122)
+
+
+
+
+attach(ACS_13)
+ACS_13 <- data.frame(ACS_13[,2], ACS_13[,3], ACS_13[,232], ACS_13[,238], ACS_13[,242], ACS_13[,246], ACS_13[,250], ACS_13[,254], ACS_13[,258], ACS_13[,262])
+colnames(ACS_13) <- c("Id2", "Geography", "pop13", "% in less than 9th grade", "% in 9th to 12th grade", "% high school graduate", "% some college no degree", "% associates degree", "% bachelors degree", "% graduate or professional degree")
+ACS_13 <- ACS_13[-1,]
+rownames(ACS_13) <- NULL
+ACS_13 <- ACS_13[-2917,]
+rownames(ACS_13) <- NULL
+
+
+ACS_13[,3] <- as.numeric(as.character(ACS_13[,3]))
+ACS_13[,4] <- as.numeric(as.character(ACS_13[,4]))
+ACS_13[,5] <- as.numeric(as.character(ACS_13[,5]))
+ACS_13[,6] <- as.numeric(as.character(ACS_13[,6]))
+ACS_13[,7] <- as.numeric(as.character(ACS_13[,7]))
+ACS_13[,8] <- as.numeric(as.character(ACS_13[,8]))
+ACS_13[,9] <- as.numeric(as.character(ACS_13[,9]))
+ACS_13[,10] <- as.numeric(as.character(ACS_13[,10]))
+
+ACS_132 <- data.frame(50*.01*ACS_13[,4], 100*.01*ACS_13[,5], 120*.01*ACS_13[,6], 130*.01*ACS_13[,7], 140*.01*ACS_13[,8], 190*.01*ACS_13[,9], 230*.01*ACS_13[,10])
+ACS_132<-as.matrix(ACS_132)
+chci13 <- rowSums(ACS_132)
+
+
+
+attach(ACS_14)
+ACS_14 <- data.frame(ACS_14[,2], ACS_14[,3], ACS_14[,232], ACS_14[,238], ACS_14[,242], ACS_14[,246], ACS_14[,250], ACS_14[,254], ACS_14[,258], ACS_14[,262])
+colnames(ACS_14) <- c("Id2", "Geography", "pop14", "% in less than 9th grade", "% in 9th to 12th grade", "% high school graduate", "% some college no degree", "% associates degree", "% bachelors degree", "% graduate or professional degree")
+ACS_14 <- ACS_14[-1,]
+rownames(ACS_14) <- NULL
+
+
+ACS_14[,3] <- as.numeric(as.character(ACS_14[,3]))
+ACS_14[,4] <- as.numeric(as.character(ACS_14[,4]))
+ACS_14[,5] <- as.numeric(as.character(ACS_14[,5]))
+ACS_14[,6] <- as.numeric(as.character(ACS_14[,6]))
+ACS_14[,7] <- as.numeric(as.character(ACS_14[,7]))
+ACS_14[,8] <- as.numeric(as.character(ACS_14[,8]))
+ACS_14[,9] <- as.numeric(as.character(ACS_14[,9]))
+ACS_14[,10] <- as.numeric(as.character(ACS_14[,10]))
+
+ACS_142 <- data.frame(50*.01*ACS_14[,4], 100*.01*ACS_14[,5], 120*.01*ACS_14[,6], 130*.01*ACS_14[,7], 140*.01*ACS_14[,8], 190*.01*ACS_14[,9], 230*.01*ACS_14[,10])
+ACS_142<-as.matrix(ACS_142)
+chci14 <- rowSums(ACS_142)
+
+
+
+
+attach(ACS_15)
+ACS_15 <- data.frame(ACS_15[,2], ACS_15[,3], ACS_15[,232], ACS_15[,238], ACS_15[,242], ACS_15[,246], ACS_15[,250], ACS_15[,254], ACS_15[,258], ACS_15[,262])
+colnames(ACS_15) <- c("Id2", "Geography", "pop15", "% in less than 9th grade", "% in 9th to 12th grade", "% high school graduate", "% some college no degree", "% associates degree", "% bachelors degree", "% graduate or professional degree")
+ACS_15 <- ACS_15[-1,]
+rownames(ACS_15) <- NULL
+
+
+ACS_15[,3] <- as.numeric(as.character(ACS_15[,3]))
+ACS_15[,4] <- as.numeric(as.character(ACS_15[,4]))
+ACS_15[,5] <- as.numeric(as.character(ACS_15[,5]))
+ACS_15[,6] <- as.numeric(as.character(ACS_15[,6]))
+ACS_15[,7] <- as.numeric(as.character(ACS_15[,7]))
+ACS_15[,8] <- as.numeric(as.character(ACS_15[,8]))
+ACS_15[,9] <- as.numeric(as.character(ACS_15[,9]))
+ACS_15[,10] <- as.numeric(as.character(ACS_15[,10]))
+
+ACS_152 <- data.frame(50*.01*ACS_15[,4], 100*.01*ACS_15[,5], 120*.01*ACS_15[,6], 130*.01*ACS_15[,7], 140*.01*ACS_15[,8], 190*.01*ACS_15[,9], 230*.01*ACS_15[,10])
+ACS_152<-as.matrix(ACS_152)
+chci15 <- rowSums(ACS_152)
+
+
+
+
+
+attach(ACS_16)
+ACS_16 <- data.frame(ACS_16[,2], ACS_16[,3], ACS_16[,232], ACS_16[,238], ACS_16[,242], ACS_16[,246], ACS_16[,250], ACS_16[,254], ACS_16[,258], ACS_16[,262])
+colnames(ACS_16) <- c("Id2", "Geography", "pop16", "% in less than 9th grade", "% in 9th to 12th grade", "% high school graduate", "% some college no degree", "% associates degree", "% bachelors degree", "% graduate or professional degree")
+ACS_16 <- ACS_16[-1,]
+rownames(ACS_16) <- NULL
+
+
+ACS_16[,3] <- as.numeric(as.character(ACS_16[,3]))
+ACS_16[,4] <- as.numeric(as.character(ACS_16[,4]))
+ACS_16[,5] <- as.numeric(as.character(ACS_16[,5]))
+ACS_16[,6] <- as.numeric(as.character(ACS_16[,6]))
+ACS_16[,7] <- as.numeric(as.character(ACS_16[,7]))
+ACS_16[,8] <- as.numeric(as.character(ACS_16[,8]))
+ACS_16[,9] <- as.numeric(as.character(ACS_16[,9]))
+ACS_16[,10] <- as.numeric(as.character(ACS_16[,10]))
+
+ACS_162 <- data.frame(50*.01*ACS_16[,4], 100*.01*ACS_16[,5], 120*.01*ACS_16[,6], 130*.01*ACS_16[,7], 140*.01*ACS_16[,8], 190*.01*ACS_16[,9], 230*.01*ACS_16[,10])
+ACS_162<-as.matrix(ACS_162)
+chci16 <- rowSums(ACS_162)
+```
+I then created a data frame that involved the ID, county, the chci's for each year by county, and the poplations for each year by county.
+```{r}
+chci <- data.frame(ACS_09$Id2, ACS_09$Geography, chci09, chci10, chci11, chci12, chci13, chci14, chci15, chci16, ACS_09$pop09, ACS_10$pop10, ACS_11$pop11, ACS_12$pop12, ACS_13$pop13, ACS_14$pop14, ACS_15$pop15, ACS_16$pop16)
+```
+I then renamed all the variable names so as to make the data set easier to interpret.
+
+```{r}
+colnames(chci) <- c("id",	"county",	"chci09",	"chci10",	"chci11",	"chci12",	"chci13",	"chci14",	"chci15",	"chci16",	"pop09",	"pop10",	"pop11",	"pop12",	"pop13",	"pop14",	"pop15",	"pop16")
+```
+The last data wrangling method I did on this data set was create four new variables. These variables involve the chci growth from year 2009 to year 2016, the population growth from year 2009 to year 2016,the chci growth rate, and the population growth rate. 
+```{r}
+chcig <- chci16 - chci09
+popg <- chci$pop16 - chci$pop09
+chcigr <- ((chcig)/chci09)
+popgr <- ((popg/chci$pop09))
+
+
+chciFinished <- data.frame(chci, chcig, chcigr, popg, popgr)
+head(chciFinished)
+```
+
