@@ -1,0 +1,202 @@
+---
+title: "Machine Learning Classification and Cluster"
+author: "Jonathan Bentley"
+date: "11/10/2018"
+output: html_document
+---
+
+For this project I wanted to find the optimal classification machine learning algorithm to run on a data set called blood data. This data set was split into two sets. One set was created for training and the other set was created for testing. Both sets consist of the same variables. The only difference between the two data sets is that the testing set does not have any values for the variable called made donations this week. Overall much more will be explained about this data set. But the first thing I wanted to do, after I imported the data and packages, was check if any of the variables had high multicollinearity.
+```{r}
+
+blood_traindata <- read.csv("~/Desktop/ Data Science GitHub Directory/Jonathan-Bentley-s-Data-Science-Portfolio/blood_traindata (3).csv")
+attach(blood_traindata)
+
+library(data.table)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(DT)
+library(tidyr)
+library(corrplot)
+library(leaflet)
+library(lubridate)
+library(kernlab)
+library(caret)
+library(lattice)
+library(e1071)
+library(rattle)
+library(ISLR) 
+
+corrplot(cor(blood_traindata, use="complete.obs"),type="lower")
+```
+After Examining the correlations I discovered that the variable Total Volume Donated correlated highly with Number of Donations. Therefore Total Volume Donated was removed from the analysis so as to reduce the redundancy, and the id variable was taken out because it is not a predictor variable. 
+```{r}
+blood_traindata <- blood_traindata[,-4]
+blood_traindata <- blood_traindata[,-1]
+```
+I then split the data in the training set so as to create a training and testing set within the training data. I wanted to do this in order to find the best combination of predictors for predicting the Made Donation This Month variable. The algorithm used for this classification is logistic regression.
+
+```{r}
+fullset <- createDataPartition(blood_traindata$Made.Donation.this.month, p=0.50, list=FALSE)
+trainset <- blood_traindata[fullset,]
+testset <- blood_traindata[-fullset,]
+```
+The first prediction accuracy I wanted to examine was Made Donation this month being predicted from Months Since First Donation. This equation was found to not be a very viable one. Because it did not predict any yes responses.
+```{r}
+glm.fits<-glm(Made.Donation.this.month~Months.since.First.Donation,trainset, family = binomial)
+glm.probs=predict(glm.fits,testset,type="response")
+
+blood_traindata$Months.since.Last.Donation
+
+glm.pred=rep("No",200)
+glm.pred[glm.probs>.5]="Yes"
+glmtable <-table(glm.pred,testset$Made.Donation.this.month)
+```
+I did the same analysis to the second and third variables. The results were much more promising for the second variable.  Not only did it predict the made donations this month, but it also had a seventy seven percent accuracy rate.
+```{r}
+glm.fits2<-glm(Made.Donation.this.month~Number.of.Donations,trainset, family = binomial)
+glm.probs2=predict(glm.fits2,testset,type="response")
+
+glm.pred2=rep("No",200)
+glm.pred2[glm.probs2>.5]="Yes"
+glm2table <-table(glm.pred2,testset$Made.Donation.this.month)
+
+plot(Number.of.Donations,Made.Donation.this.month)
+
+
+glm.fits3<-glm(Made.Donation.this.month~Months.since.Last.Donation,trainset, family = binomial)
+glm.probs3=predict(glm.fits3,testset,type="response")
+
+glm.pred3=rep("No",200)
+glm.pred3[glm.probs3>.5]="Yes"
+glm3table <- table(glm.pred3,testset$Made.Donation.this.month)
+```
+I continued running logistic regression analysis in order to see which combination of variables best predicted the outcome variable. After observing all of the different combinations I decided to use glm.pred4 since it had the most accurate prediction.
+```{r}
+glm.fits4<-glm(Made.Donation.this.month~Months.since.Last.Donation + Months.since.First.Donation + Number.of.Donations,trainset, family = binomial)
+glm.probs4=predict(glm.fits4,testset,type="response")
+
+glm.pred4=rep("No",200)
+glm.pred4[glm.probs4>.5]="Yes"
+glm4table <- table(glm.pred4,testset$Made.Donation.this.month)
+glm4table
+(148 + 6)/200
+
+
+glm.fits5<-glm(Made.Donation.this.month ~ Months.since.Last.Donation + Months.since.First.Donation, family = binomial)
+glm.probs5=predict(glm.fits5,testset,type="response")
+
+glm.pred5=rep("No",200)
+glm.pred5[glm.probs5>.5]="Yes"
+glm5table <- table(glm.pred5,testset$Made.Donation.this.month)
+glm5table
+143/200
+glm.fits6<-glm(Made.Donation.this.month~Months.since.Last.Donation + Number.of.Donations,trainset, family = binomial)
+glm.probs6=predict(glm.fits6,testset,type="response")
+
+glm.pred6=rep("No",200)
+glm.pred6[glm.probs6>.5]="Yes"
+glm6table <- table(glm.pred6,testset$Made.Donation.this.month)
+glm6table
+143/200
+glm.fits7<-glm(Made.Donation.this.month ~ Months.since.First.Donation + Number.of.Donations,trainset, family = binomial)
+glm.probs7=predict(glm.fits7,testset,type="response")
+
+glm.pred7=rep("No",200)
+glm.pred7[glm.probs7>.5]="Yes"
+glm7table <- table(glm.pred7,testset$Made.Donation.this.month)
+glm7table
+145/200
+```
+Now I can run the chosen model on the entire training set and then on the testing data. However, before doing this I had to drop two non-useful columns, and I had to run a cluster on the data so as input the cluster codes 1 and 2 into the data set.
+```{r}
+blood_testdata <- read.csv("~/Desktop/ Data Science GitHub Directory/Jonathan-Bentley-s-Data-Science-Portfolio/blood_testdata.csv")
+blood_testdata <- blood_testdata[,-4]
+blood_testdata <- blood_testdata[,-1]
+
+km.out=kmeans(blood_testdata[,1:3],2,nstart=20)
+km.out$cluster
+
+
+blood_testdata <- blood_testdata %>% mutate(Made.Donation.this.month = km.out$cluster)
+attach(blood_testdata)
+blood_testdata <- blood_testdata %>% 
+  mutate(Made.Donation.this.month = ifelse(Made.Donation.this.month== 2, 0,1))
+```
+Now I can run same equation used in the glm.pred4 on the entire training data set and then I can test it out on the testing set.
+```{r}
+glm.fitslogist<-glm(Made.Donation.this.month ~ Months.since.Last.Donation + Months.since.First.Donation + Number.of.Donations,blood_traindata, family = binomial)
+glm.probslogist=predict(glm.fitslogist,blood_testdata,type="response")
+head(glm.probslogist)
+glm.predlogist=rep("No",176)
+glm.predlogist[glm.probslogist>.4]="Yes"
+glmlogisttable <- table(glm.predlogist, blood_testdata$Made.Donation.this.month)
+
+glmlogisttable
+122/176
+```
+I then created the knn splitting that I desired for the cross validation. Furthermore, I only used the columns that had the desired variables, and I converted the dependent variable into a factor within the training set so as to make it predictable.
+```{r}
+control <- trainControl(method="cv", number=3)
+metric <- "Accuracy"
+
+
+blood_traindata <- blood_traindata[,-1]
+blood_traindata$Made.Donation.this.month <- as.factor(blood_traindata$Made.Donation.this.month)
+blood_testdata$Made.Donation.this.month <- as.factor(blood_testdata$Made.Donation.this.month)
+```
+I then ran all the different classification machine learning algorithms on this testing data in the same way that I did with the glm.predlogist model. The results showed that the support vector machine was the most accurate predictive model. 
+```{r}
+# Linear Discriminant Analysis (LDA)
+fit.lda <- train(Made.Donation.this.month~., data=blood_traindata, method="lda", metric=metric, trControl=control)
+lda.probs=predict(fit.lda,blood_testdata,type="prob")
+head(lda.probs)
+
+       
+glm.predlda=rep("No",176)
+glm.predlda[lda.probs$`1`>.4]="Yes"
+glmldatable <- table(glm.predlda, blood_testdata$Made.Donation.this.month)
+glmldatable
+124/176
+# Classfication and Regression Trees (CART)
+fit.cart <- train(x = blood_traindata[, names(blood_traindata) !="Made Donation this month"], y = blood_traindata$Made.Donation.this.month, method="rpart", metric=metric, trControl=control)
+cart.probs=predict(fit.cart,blood_testdata,type="prob")
+
+glm.predcart=rep("No",176)
+glm.predcart[cart.probs$`1`>.5]="Yes"
+glmcarttable <- table(glm.predcart, blood_testdata$Made.Donation.this.month)
+glmcarttable
+119/176
+
+# k-Nearest Neighbors (KNN)
+fit.knn <- train(Made.Donation.this.month~., data=blood_traindata, method="knn", metric=metric, trControl=control)
+knn.probs=predict(fit.knn,blood_testdata,type="prob")
+
+glm.predknn=rep("No",176)
+glm.predknn[knn.probs$`1`>.7]="Yes"
+glmknntable <- table(glm.predknn, blood_testdata$Made.Donation.this.month)
+glmknntable
+125/176
+# Support Vector Machines (SVM)
+fit.svm <- train(Made.Donation.this.month~., data=blood_traindata, metric=metric, trControl=control)
+svm.probs=predict(fit.svm,blood_testdata,type= "prob")
+glm.predsvm=rep("No",176)
+glm.predsvm[svm.probs$`1`>.9]="Yes"
+glmsvmtable <- table(glm.predsvm, blood_testdata$Made.Donation.this.month)
+glmsvmtable
+125/176
+# Random Forest
+fit.rf <- train(x = blood_traindata[, names(blood_traindata) !="Made Donation this month"], y = blood_traindata$Made.Donation.this.month, method="rf", metric=metric, trControl=control)
+rf.probs=predict(fit.rf,blood_testdata,type="prob")
+head(rf.probs)
+glm.predrf=rep("No",176)
+glm.predrf[rf.probs$`1`>.7]="Yes"
+glmrftable <- table(glm.predrf, blood_testdata$Made.Donation.this.month)
+glmrftable
+118/176
+#The results of all of the machine learning algorithms
+results <- resamples(list(lda=fit.lda, cart=fit.cart, knn=fit.knn, svm=fit.svm, rf=fit.rf))
+summary(results)
+```
+
+
