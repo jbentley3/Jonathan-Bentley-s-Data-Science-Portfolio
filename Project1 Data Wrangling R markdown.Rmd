@@ -1,0 +1,65 @@
+---
+title: "R Data Wrangling"
+author: "Jonathan Bentley"
+date: "11/6/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+  For this project I simply just wanted to query two sets of data from the original large data set. This data set consists of many variables, but the only variables of concern are zip code, information, and professional, scientific, & technical skills. The first thing I did was to read/attach the data set, and obtain the packages needed for this analysis using the library function 
+```{r}
+getwd()
+P01_LA_zipcode_payroll <- read.csv("~/Desktop/ Data Science GitHub Directory/Jonathan-Bentley-s-Data-Science-Portfolio/P01_LA zipcode payroll.csv")
+LA_Zip <- data.frame(P01_LA_zipcode_payroll)
+attach(LA_Zip)
+
+library(dplyr)
+library(sqldf)
+library(stringr)
+```
+  I then created a data frame of which only involves the rows with the total employment.
+```{r}
+Total <- LA_Zip %>% filter(str_detect(LA_Zip$Zip.Code,'Total'))
+Total <- data.frame(Total)
+Total$Zip.Code <- gsub("Total", "",Total$Zip.Code)
+```
+  I then wanted to clean the original data which was renamed to La_zip by omitting the "NA" values, changing the asteriks to zero and converting the zip code and industry variables into factors
+```{r}
+LA_Zip  <- na.omit(LA_Zip)
+LA_Zip[,1] <- as.factor(LA_Zip[,1])
+LA_Zip[,2] <- as.factor(LA_Zip[,2])
+
+LA_Zip1=as.data.frame(sapply(LA_Zip,sub,pattern="\\*",replacement=""))
+LA_Zip2=as.data.frame(sapply(LA_Zip1,sub,pattern="\\*",replacement=""))
+LA_Zip3=as.data.frame(sapply(LA_Zip2,sub,pattern="\\*",replacement=""))
+LA_Zip4=as.data.frame(sapply(LA_Zip3,sub,pattern="\\*",replacement=""))
+LA_Zip=as.data.frame(sapply(LA_Zip4,sub,pattern="\\*",replacement="0"))
+```
+For the second query I obtained only the employment information for the information and professional, scientific, & technical skills group. I changed the name of the professional, scientific, & technical skills group to professional. I then used the package called sqldf to select only specific columns that I wanted to look at.
+```{r}
+information <- subset(LA_Zip, Industry=="Information")
+professional <- subset(LA_Zip, Industry=="Professional, Scientific, & Technical Skills")
+
+information <- sqldf('select "Zip.Code","Industry","Employment" from information order by "Zip.Code"')
+professional <- sqldf('select "Zip.Code","Industry","Employment" from professional order by "Zip.Code"')
+head(information)
+```
+I then ommited the labeling variable because it was not useful and then I changed the name of the employment variable to information for the information data set. I did the same thing for the professional data set. Lastly I combined the two data sets using the left join function.
+
+```{r}
+information <- information[,-2]
+colnames(information) <- c("Zip.Code", "information") 
+professional <- professional[,-2]
+colnames(professional) <- c("Zip.Code", "professional") 
+La17techproj <- left_join(information, professional, by = "Zip.Code")                      
+head(La17techproj)
+```
+The last thing I did was select two specific columns of interest from the Total data set created earlier. These variables include zip code and employment
+```{r}
+Total <- Total %>% select(Zip.Code, Employment)
+head(Total)
+```
+
+
